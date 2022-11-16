@@ -94,9 +94,6 @@ class PointCloudPublisher : public rclcpp::Node
         message->is_dense = pcl_message->is_dense;
         message->is_bigendian = false;
 
-        // Fill fields metadata
-        message->fields.clear();
-
         // Publish poincloud
         publisher_->publish(*message);
 
