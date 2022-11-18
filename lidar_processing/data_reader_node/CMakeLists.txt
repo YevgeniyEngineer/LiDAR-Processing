@@ -21,8 +21,8 @@ include_directories(
 )
 
 file(GLOB SOURCES
-    "${PROJECT_SOURCE_DIR}/include/*.hpp"
     "${PROJECT_SOURCE_DIR}/src/*.cpp"
+    "${PROJECT_SOURCE_DIR}/src/*.hpp"
 )
 
 add_executable(${PROJECT_NAME} src/data_reader_node.cpp ${SOURCES})
