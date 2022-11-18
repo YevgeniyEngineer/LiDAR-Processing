@@ -6,7 +6,7 @@ PointCloudPublisher::PointCloudPublisher() : Node("point_cloud_publisher_node")
 {
     std::cout << "PointCloudPublisher node started." << std::endl;
 
-    publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("point_cloud_topic", 10);
+    publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("pointcloud", 10);
     timer_ =
         this->create_wall_timer(std::chrono::milliseconds(100), std::bind(&PointCloudPublisher::timerCallback, this));
 
@@ -40,7 +40,6 @@ std::vector<std::filesystem::path> PointCloudPublisher::readFilenamesExt(std::fi
 
 void PointCloudPublisher::timerCallback()
 {
-
     sensor_msgs::msg::PointCloud2::Ptr message = std::make_shared<sensor_msgs::msg::PointCloud2>();
 
     // Reset iterator
@@ -63,6 +62,7 @@ void PointCloudPublisher::timerCallback()
     }
 
     // pcl::PointCloud to sensor_msgs::msg::PointCloud2
+    message->fields.clear();
     if (pcl_message->width == 0 && pcl_message->height == 0)
     {
         message->width = pcl_message->size();
@@ -84,7 +84,7 @@ void PointCloudPublisher::timerCallback()
     }
 
     // Fill metadata
-    message->fields.clear();
+    message->header.frame_id = "lidar_transform";
     message->point_step = sizeof(pcl::PointXYZI);
     message->row_step = sizeof(pcl::PointXYZI) * message->width;
     message->is_dense = pcl_message->is_dense;
@@ -96,12 +96,12 @@ void PointCloudPublisher::timerCallback()
     // Increment iterator
     ++filenames_iterator_;
 }
-
 } // namespace lidar_processing
 
 int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
+    rclcpp::install_signal_handlers();
     rclcpp::spin(std::make_shared<lidar_processing::PointCloudPublisher>());
     rclcpp::shutdown();
     return 0;
