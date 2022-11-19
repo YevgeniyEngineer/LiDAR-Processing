@@ -31,7 +31,7 @@ void PosePublisher::poseCallback()
 
     transform_stamped_.header.stamp = rclcpp::Clock{RCL_ROS_TIME}.now();
     transform_stamped_.header.frame_id = "world";
-    transform_stamped_.child_frame_id = "lidar_transform";
+    transform_stamped_.child_frame_id = "pointcloud";
     transform_stamped_.transform.translation.x = tx_;
     transform_stamped_.transform.translation.y = ty_;
     transform_stamped_.transform.translation.z = tz_;
