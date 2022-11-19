@@ -1,5 +1,7 @@
 #include "data_reader_node.hpp"
 
+#include "conversion.hpp"
+
 namespace lidar_processing
 {
 PointCloudPublisher::PointCloudPublisher() : Node("point_cloud_publisher_node")
@@ -61,47 +63,32 @@ void PointCloudPublisher::timerCallback()
 
     // Convert pcl::PointCloud<pcl::PointXYZI> to binary pcl::PointCloud2 format
     pcl::PCLPointCloud2::Ptr pcl_message = std::make_shared<pcl::PCLPointCloud2>();
-    pcl::toPCLPointCloud2(*pcl_cloud, *pcl_message);
+    lidar_processing::convert(*pcl_cloud, *pcl_message);
+    // pcl::toPCLPointCloud2(*pcl_cloud, *pcl_message);
     pcl_message->header.frame_id = "pointcloud";
 
     // Copy binary blob pcl::PCLPointCloud2 to sensor_msgs::msg::PointCloud2
     sensor_msgs::msg::PointCloud2::Ptr ros2_message = std::make_shared<sensor_msgs::msg::PointCloud2>();
-
-    ros2_message->header.frame_id = pcl_message->header.frame_id;
+    lidar_processing::convert(*pcl_message, *ros2_message);
 
     // pcl message: the timestamp uint64_t value represents microseconds since 1970-01-01 00:00:00 (the UNIX epoch).
     auto timestamp = std::chrono::system_clock::now().time_since_epoch();
     int32_t seconds = timestamp / std::chrono::seconds(1);
     uint32_t nanoseconds = timestamp / std::chrono::nanoseconds(1);
 
+    ros2_message->header.frame_id = "pointcloud";
     ros2_message->header.stamp.sec = seconds;
     ros2_message->header.stamp.nanosec = nanoseconds;
 
-    ros2_message->height = pcl_message->height;
-    ros2_message->width = pcl_message->width;
-
-    for (const auto field : pcl_message->fields)
+    // Print message info
+    for (const auto field : ros2_message->fields)
     {
         std::cout << "field_name: " << field.name << std::endl;
         std::cout << "offset: " << field.offset << std::endl;
         std::cout << "datatype: " << field.datatype << std::endl;
         std::cout << "count: " << field.count << std::endl;
-
-        sensor_msgs::msg::PointField ros2_field;
-        ros2_field.name = field.name;
-        ros2_field.offset = field.offset;
-        ros2_field.datatype = field.datatype;
-        ros2_field.count = field.count;
-        ros2_message->fields.emplace_back(ros2_field);
     }
 
-    ros2_message->is_bigendian = pcl_message->is_bigendian;
-    ros2_message->point_step = pcl_message->point_step;
-    ros2_message->row_step = pcl_message->row_step;
-    ros2_message->data = pcl_message->data;
-    ros2_message->is_dense = pcl_message->is_dense;
-
-    // Print message info
     std::cout << "frame_id: " << ros2_message->header.frame_id << std::endl;
     std::cout << "sec: " << ros2_message->header.stamp.sec << std::endl;
     std::cout << "nanosec: " << ros2_message->header.stamp.nanosec << std::endl;

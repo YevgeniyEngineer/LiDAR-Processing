@@ -29,6 +29,7 @@ add_executable(${PROJECT_NAME} src/data_reader_node.cpp ${SOURCES})
 ament_target_dependencies(${PROJECT_NAME} rclcpp sensor_msgs)
 
 target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} CONVERSION::conversion)
 
 install(TARGETS ${PROJECT_NAME}
         RUNTIME DESTINATION bin
