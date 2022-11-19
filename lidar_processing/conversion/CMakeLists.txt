@@ -6,7 +6,16 @@ project (conversion)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_library(conversion SHARED ${CMAKE_CURRENT_SOURCE_DIR}/include/conversion.hpp)
+find_package(PCL 1.7.2 REQUIRED)
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
+
+add_library(conversion 
+    SHARED 
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/conversion.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/point_types.hpp
+)
 set_target_properties(conversion PROPERTIES LINKER_LANGUAGE CXX)
 
 target_include_directories(conversion PUBLIC 
