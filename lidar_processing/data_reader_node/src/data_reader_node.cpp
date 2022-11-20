@@ -73,8 +73,14 @@ void PointCloudPublisher::timerCallback()
 
     // pcl message: the timestamp uint64_t value represents microseconds since 1970-01-01 00:00:00 (the UNIX epoch).
     auto timestamp = std::chrono::system_clock::now().time_since_epoch();
-    int32_t seconds = timestamp / std::chrono::seconds(1);
-    uint32_t nanoseconds = timestamp / std::chrono::nanoseconds(1);
+
+    std::chrono::seconds seconds_since_epoch = std::chrono::duration_cast<std::chrono::seconds>(timestamp);
+    std::chrono::nanoseconds nanoseconds_remaining =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(timestamp) -
+        std::chrono::duration_cast<std::chrono::nanoseconds>(seconds_since_epoch);
+
+    int32_t seconds = static_cast<int32_t>(seconds_since_epoch.count());
+    uint32_t nanoseconds = static_cast<uint32_t>(nanoseconds_remaining.count());
 
     ros2_message->header.frame_id = "pointcloud";
     ros2_message->header.stamp.sec = seconds;
