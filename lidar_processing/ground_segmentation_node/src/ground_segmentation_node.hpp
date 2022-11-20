@@ -3,6 +3,7 @@
 #define GROUND_SEGMENTATION_NODE_HPP_
 
 // custom point types
+#include "conversion.hpp"
 #include "point_types.hpp"
 
 // std

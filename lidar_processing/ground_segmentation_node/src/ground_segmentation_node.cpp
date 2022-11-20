@@ -16,11 +16,21 @@ GroundSegmentationNode::GroundSegmentationNode() : Node("ground_segmentation_nod
     publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("pointcloud_segmented", 10);
 }
 
-void GroundSegmentationNode::segmentGround(const sensor_msgs::msg::PointCloud2 &input_message)
+void GroundSegmentationNode::segmentGround(const sensor_msgs::msg::PointCloud2 &ros2_message)
 {
-    RCLCPP_INFO(this->get_logger(), "I heard: '%s'", input_message.header.frame_id.c_str());
+    RCLCPP_INFO(this->get_logger(), "I heard: '%s'", ros2_message.header.frame_id.c_str());
 
-    // Convert input_message to pcl::PointCloud<pcl::PointXYZI>
+    // Convert sensor_msgs::msg::PointCloud2 to pcl::PointCloud<pcl::PointXYZI>
+    pcl::PCLPointCloud2::Ptr pcl_message = std::make_shared<pcl::PCLPointCloud2>();
+    pcl::PointCloud<pcl::PointXYZI>::Ptr pcl_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
+
+    convert(ros2_message, *pcl_message);
+    convert(*pcl_message, *pcl_cloud);
+
+    for (const auto &pt : pcl_cloud->points)
+    {
+        std::cout << pt.x << " " << pt.y << " " << pt.z << std::endl;
+    }
 
     // Apply segmentation and label segmented cloud as ground and nonground points
 
