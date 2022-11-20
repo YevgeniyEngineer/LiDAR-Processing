@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cstring>
 #include <memory>
+#include <utility>
 
 // ROS2
 #include <sensor_msgs/msg/point_cloud.hpp>
@@ -20,7 +21,44 @@
 
 namespace lidar_processing
 {
+// Convert time from seconds and nanoseconds to microseconds since 1970-01-01 00:00:00 (the UNIX epoch).
+uint64_t convert(const std::chrono::seconds &sec, const std::chrono::nanoseconds &nanosec)
+{
+    const std::chrono::nanoseconds &duration_nanosec =
+        nanosec + std::chrono::duration_cast<std::chrono::nanoseconds>(sec);
+
+    return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::microseconds>(duration_nanosec).count());
+}
+
+// Convert time from seconds and nanoseconds to microseconds since 1970-01-01 00:00:00 (the UNIX epoch).
+uint64_t convert(const int32_t &seconds, const uint32_t &nanoseconds)
+{
+    const std::chrono::seconds &sec = std::chrono::seconds(seconds);
+    const std::chrono::nanoseconds &nanosec = std::chrono::nanoseconds(nanoseconds);
+
+    return convert(sec, nanosec);
+}
+
+// Convert time from microseconds to seconds and nanoseconds since 1970-01-01 00:00:00 (the UNIX epoch).
+std::pair<int32_t, uint32_t> convert(const std::chrono::microseconds &microsec)
+{
+    const std::chrono::seconds &sec = std::chrono::duration_cast<std::chrono::seconds>(microsec);
+    const std::chrono::nanoseconds &nanosec = std::chrono::duration_cast<std::chrono::nanoseconds>(microsec) -
+                                              std::chrono::duration_cast<std::chrono::nanoseconds>(sec);
+
+    return std::make_pair(static_cast<int32_t>(sec.count()), static_cast<uint32_t>(nanosec.count()));
+}
+
+// Convert time from microseconds to seconds and nanoseconds since 1970-01-01 00:00:00 (the UNIX epoch).
+std::pair<int32_t, uint32_t> convert(const uint64_t &microseconds)
+{
+    const std::chrono::microseconds &microsec = std::chrono::microseconds(microseconds);
+
+    return convert(microsec);
+}
+
 // convert pcl::PointCloud<PointT> to pcl::PCLPointCloud2
+// note that timestamp and frame id are missing and need to be populated manually
 template <typename PointT>
 void convert(const typename pcl::PointCloud<PointT> &pcl_cloud, pcl::PCLPointCloud2 &pcl_message)
 {
@@ -40,6 +78,11 @@ void convert(const pcl::PCLPointCloud2 &pcl_message, sensor_msgs::msg::PointClou
         ros2_message.fields.emplace_back(ros2_field);
     }
 
+    ros2_message.header.frame_id = pcl_message.header.frame_id;
+    std::pair<int32_t, uint32_t> timestamp = convert(pcl_message.header.stamp);
+    ros2_message.header.stamp.sec = timestamp.first;
+    ros2_message.header.stamp.nanosec = timestamp.second;
+
     ros2_message.height = pcl_message.height;
     ros2_message.width = pcl_message.width;
     ros2_message.is_bigendian = pcl_message.is_bigendian;
@@ -50,6 +93,7 @@ void convert(const pcl::PCLPointCloud2 &pcl_message, sensor_msgs::msg::PointClou
 }
 
 // convert pcl::PointCloud<PointT> to sensor_msgs::msg::PointCloud2
+// note that timestamp and frame id are missing and need to be populated manually
 template <typename PointT>
 void convert(const typename pcl::PointCloud<PointT> &pcl_cloud, sensor_msgs::msg::PointCloud2 &ros2_message)
 {
@@ -71,6 +115,9 @@ void convert(const sensor_msgs::msg::PointCloud2 &ros2_message, pcl::PCLPointClo
         pcl_message.fields.emplace_back(pcl_field);
     }
 
+    pcl_message.header.frame_id = ros2_message.header.frame_id;
+    pcl_message.header.stamp = convert(ros2_message.header.stamp.sec, ros2_message.header.stamp.nanosec);
+
     pcl_message.height = ros2_message.height;
     pcl_message.width = ros2_message.width;
     pcl_message.is_bigendian = ros2_message.is_bigendian;
@@ -81,6 +128,7 @@ void convert(const sensor_msgs::msg::PointCloud2 &ros2_message, pcl::PCLPointClo
 }
 
 // convert pcl::PCLPointCloud2 to pcl::PointCloud<PointT>
+// note that timestamp and frame id is lost during conversion
 template <typename PointT>
 void convert(const pcl::PCLPointCloud2 &pcl_message, typename pcl::PointCloud<PointT> &pcl_cloud)
 {
@@ -88,6 +136,7 @@ void convert(const pcl::PCLPointCloud2 &pcl_message, typename pcl::PointCloud<Po
 }
 
 // convert sensor_msgs::msg::PointCloud2 to pcl::PointCloud<PointT>
+// note that timestamp and frame id are lost during conversion
 template <typename PointT>
 void convert(const sensor_msgs::msg::PointCloud2 &ros2_message, typename pcl::PointCloud<PointT> &pcl_cloud)
 {

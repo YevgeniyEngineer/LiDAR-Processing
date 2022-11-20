@@ -64,27 +64,18 @@ void PointCloudPublisher::timerCallback()
     // Convert pcl::PointCloud<pcl::PointXYZI> to binary pcl::PointCloud2 format
     pcl::PCLPointCloud2::Ptr pcl_message = std::make_shared<pcl::PCLPointCloud2>();
     lidar_processing::convert(*pcl_cloud, *pcl_message);
-    // pcl::toPCLPointCloud2(*pcl_cloud, *pcl_message);
+
+    // pcl message: the timestamp uint64_t value represents microseconds since 1970-01-01 00:00:00 (the UNIX epoch).
+    const auto &timestamp = std::chrono::system_clock::now().time_since_epoch();
+    const std::chrono::microseconds &microseconds_since_epoch =
+        std::chrono::duration_cast<std::chrono::microseconds>(timestamp);
+
+    pcl_message->header.stamp = static_cast<uint64_t>(microseconds_since_epoch.count());
     pcl_message->header.frame_id = "pointcloud";
 
     // Copy binary blob pcl::PCLPointCloud2 to sensor_msgs::msg::PointCloud2
     sensor_msgs::msg::PointCloud2::Ptr ros2_message = std::make_shared<sensor_msgs::msg::PointCloud2>();
     lidar_processing::convert(*pcl_message, *ros2_message);
-
-    // pcl message: the timestamp uint64_t value represents microseconds since 1970-01-01 00:00:00 (the UNIX epoch).
-    auto timestamp = std::chrono::system_clock::now().time_since_epoch();
-
-    std::chrono::seconds seconds_since_epoch = std::chrono::duration_cast<std::chrono::seconds>(timestamp);
-    std::chrono::nanoseconds nanoseconds_remaining =
-        std::chrono::duration_cast<std::chrono::nanoseconds>(timestamp) -
-        std::chrono::duration_cast<std::chrono::nanoseconds>(seconds_since_epoch);
-
-    int32_t seconds = static_cast<int32_t>(seconds_since_epoch.count());
-    uint32_t nanoseconds = static_cast<uint32_t>(nanoseconds_remaining.count());
-
-    ros2_message->header.frame_id = "pointcloud";
-    ros2_message->header.stamp.sec = seconds;
-    ros2_message->header.stamp.nanosec = nanoseconds;
 
     // Print message info
     for (const auto field : ros2_message->fields)
