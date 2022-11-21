@@ -2,8 +2,18 @@
 #ifndef GROUND_SEGMENTATION_HPP_
 #define GROUND_SEGMENTATION_HPP_
 
+// new point type pcl::PointXYZIL
 #include "point_types.hpp"
+
+// std
+#include <algorithm>
+#include <array>
+#include <vector>
+
+// Eigen
 #include <eigen3/Eigen/Dense>
+
+// PCL
 #include <pcl/common/centroid.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -41,7 +51,7 @@ class GroundSegmentation
     pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_;
 
     GroundPlane estimatePlane(const pcl::PointCloud<pcl::PointXYZI> &ground_cloud);
-    void extractInitialSeeds(const pcl::PointCloud<pcl::PointXYZI> &cloud);
+    void extractInitialSeeds(const pcl::PointCloud<pcl::PointXYZI> &cloud, pcl::PointCloud<pcl::PointXYZI> &seed_cloud);
 };
 } // namespace lidar_processing
 

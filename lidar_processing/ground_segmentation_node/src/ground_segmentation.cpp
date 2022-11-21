@@ -49,4 +49,72 @@ GroundPlane GroundSegmentation::estimatePlane(const pcl::PointCloud<pcl::PointXY
     GroundPlane plane(a, b, c, d);
     return plane;
 }
+
+void GroundSegmentation::extractInitialSeeds(const pcl::PointCloud<pcl::PointXYZI> &cloud,
+                                             pcl::PointCloud<pcl::PointXYZI> &seed_cloud)
+{
+    const size_t &number_of_points = cloud.points.size();
+    if (number_of_points == 0)
+    {
+        return;
+    }
+
+    // copy points into a vector
+    std::vector<std::array<float, 4>> points_z_sorted;
+    points_z_sorted.reserve(number_of_points);
+
+    for (size_t i = 0; i < number_of_points; ++i)
+    {
+        const pcl::PointXYZI &point = cloud.points[i];
+        std::array<float, 4> point_copied = {point.x, point.y, point.z, point.intensity};
+        points_z_sorted.emplace_back(point_copied);
+    }
+
+    // sort points in ascending z-order
+    std::sort(points_z_sorted.begin(), points_z_sorted.end(),
+              [&](const std::array<float, 4> &point_1, const std::array<float, 4> &point_2) {
+                  return point_1[2] < point_2[2];
+              });
+
+    // remove outlier points (below ground points)
+    float negative_offset_threshold = -1.5 * sensor_height_;
+    size_t cutoff_idx = 0;
+    while (points_z_sorted[cutoff_idx][2] < negative_offset_threshold)
+    {
+        ++cutoff_idx;
+    }
+    points_z_sorted.erase(points_z_sorted.begin(), points_z_sorted.begin() + cutoff_idx);
+
+    // find the lowest point representative
+    float lowest_point_representative_height = 0.0F;
+    size_t number_of_points_considered =
+        std::min(static_cast<size_t>(number_of_lowest_point_representative_estimators_), points_z_sorted.size());
+
+    if (number_of_points_considered > 0)
+    {
+        for (size_t i = 0; i < number_of_points_considered; ++i)
+        {
+            lowest_point_representative_height += points_z_sorted[i][2];
+        }
+        lowest_point_representative_height /= number_of_points_considered;
+    }
+    else
+    {
+        return;
+    }
+
+    // filter height less that lowest_point_representative_height + initial_seed_threshold_
+    seed_cloud.clear();
+    const float &cutoff_height = lowest_point_representative_height + initial_seed_threshold_;
+    for (const std::array<float, 4> &point_z_sorted : points_z_sorted)
+    {
+        if (point_z_sorted[2] > cutoff_height)
+        {
+            break;
+        }
+        const pcl::PointXYZI &point{point_z_sorted[0], point_z_sorted[1], point_z_sorted[2], point_z_sorted[3]};
+        seed_cloud.points.emplace_back(point);
+    }
+}
+
 } // namespace lidar_processing
