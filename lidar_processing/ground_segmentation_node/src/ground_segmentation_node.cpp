@@ -27,11 +27,6 @@ void GroundSegmentationNode::segmentGround(const sensor_msgs::msg::PointCloud2 &
     convert(ros2_message, *pcl_message);
     convert(*pcl_message, *pcl_cloud);
 
-    for (const auto &pt : pcl_cloud->points)
-    {
-        std::cout << pt.x << " " << pt.y << " " << pt.z << std::endl;
-    }
-
     // Apply segmentation and label segmented cloud as ground and nonground points
 
     sensor_msgs::msg::PointCloud2::Ptr output_message = std::make_shared<sensor_msgs::msg::PointCloud2>();
