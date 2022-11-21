@@ -8,6 +8,7 @@
 // std
 #include <algorithm>
 #include <array>
+#include <memory>
 #include <vector>
 
 // Eigen
@@ -33,7 +34,14 @@ class GroundSegmentation
     GroundSegmentation(unsigned int number_of_iterations = 3U, unsigned int number_of_segments = 1U,
                        unsigned int number_of_lowest_point_representative_estimators = 250U,
                        float sensor_height = 1.73F, float distance_threshold = 0.3F,
-                       float initial_seed_threshold = 1.2F);
+                       float initial_seed_threshold = 1.2F)
+        : number_of_iterations_(number_of_iterations), number_of_segments_(number_of_segments),
+          number_of_lowest_point_representative_estimators_(number_of_lowest_point_representative_estimators),
+          sensor_height_(sensor_height), distance_threshold_(distance_threshold),
+          initial_seed_threshold_(initial_seed_threshold)
+    {
+    }
+
     ~GroundSegmentation() = default;
 
     void segmentGround(const pcl::PointCloud<pcl::PointXYZI> &input_cloud,

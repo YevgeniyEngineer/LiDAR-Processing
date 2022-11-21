@@ -6,6 +6,9 @@
 #include "conversion.hpp"
 #include "point_types.hpp"
 
+// ground segmentation
+#include "ground_segmentation.hpp"
+
 // std
 #include <chrono>
 #include <filesystem>

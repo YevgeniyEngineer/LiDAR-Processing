@@ -25,7 +25,7 @@ file(GLOB SOURCES
     "${PROJECT_SOURCE_DIR}/src/*.hpp"
 )
 
-add_executable(${PROJECT_NAME} src/ground_segmentation_node.cpp ${SOURCES})
+add_executable(${PROJECT_NAME} src/ground_segmentation.cpp src/ground_segmentation_node.cpp ${SOURCES})
 ament_target_dependencies(${PROJECT_NAME} rclcpp sensor_msgs)
 
 target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES})

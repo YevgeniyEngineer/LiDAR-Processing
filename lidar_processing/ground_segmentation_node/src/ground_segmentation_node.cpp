@@ -28,6 +28,16 @@ void GroundSegmentationNode::segmentGround(const sensor_msgs::msg::PointCloud2 &
     convert(*pcl_message, *pcl_cloud);
 
     // Apply segmentation and label segmented cloud as ground and nonground points
+    auto ground_segmetation = std::make_shared<GroundSegmentation>();
+
+    pcl::PointCloud<pcl::PointXYZIL>::Ptr pcl_cloud_segmented = std::make_shared<pcl::PointCloud<pcl::PointXYZIL>>();
+
+    auto t1 = std::chrono::high_resolution_clock::now();
+    ground_segmetation->segmentGround(*pcl_cloud, *pcl_cloud_segmented);
+    auto t2 = std::chrono::high_resolution_clock::now();
+    std::cout << "Ground segmentation took: "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() / 1000.0F << " seconds"
+              << std::endl;
 
     sensor_msgs::msg::PointCloud2::Ptr output_message = std::make_shared<sensor_msgs::msg::PointCloud2>();
 }
