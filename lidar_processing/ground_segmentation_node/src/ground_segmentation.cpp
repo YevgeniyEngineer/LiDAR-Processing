@@ -105,45 +105,103 @@ void GroundSegmentation::extractInitialSeeds(const pcl::PointCloud<pcl::PointXYZ
     std::cout << "Number of seed points: " << seed_cloud.points.size() << std::endl;
 }
 
-// Partition point cloud into multiple segments
-// Uses random index partitioning scheme
+// // Partition point cloud into multiple segments
+// // Uses random index partitioning scheme
+// void GroundSegmentation::formSegments(const pcl::PointCloud<pcl::PointXYZI> &cloud,
+//                                       std::vector<pcl::PointCloud<pcl::PointXYZIIDX>::Ptr> &cloud_segments)
+// {
+//     cloud_segments.clear();
+//     const size_t &number_of_points = cloud.points.size();
+
+//     // create indices
+//     std::vector<size_t> indices;
+//     indices.reserve(number_of_points);
+//     for (size_t i = 0; i < number_of_points; ++i)
+//     {
+//         indices.emplace_back(i);
+//     }
+
+//     // select random cloud indices
+//     std::random_device random_seed_generator;
+//     std::mt19937 pseudo_random_number_generator(random_seed_generator());
+//     std::shuffle(indices.begin(), indices.end(), pseudo_random_number_generator);
+
+//     // create cloud segments based on random indices
+//     size_t elements_within_segment = number_of_points / number_of_segments_;
+//     size_t idx_low = 0;
+//     size_t idx_high = elements_within_segment;
+//     cloud_segments.reserve(number_of_segments_);
+//     for (size_t segment_no = 0; segment_no < number_of_segments_; ++segment_no)
+//     {
+//         pcl::PointCloud<pcl::PointXYZIIDX>::Ptr cloud_segment =
+//         std::make_shared<pcl::PointCloud<pcl::PointXYZIIDX>>(); for (size_t i = idx_low; i < idx_high; ++i)
+//         {
+//             const size_t &index = indices[i];
+//             const pcl::PointXYZI &cloud_point = cloud.points[index];
+
+//             pcl::PointXYZIIDX segment_point;
+//             segment_point.x = cloud_point.x;
+//             segment_point.y = cloud_point.y;
+//             segment_point.z = cloud_point.z;
+//             segment_point.intensity = cloud_point.intensity;
+//             segment_point.index = index;
+
+//             cloud_segment->points.emplace_back(segment_point);
+//         }
+//         cloud_segments.emplace_back(cloud_segment);
+
+//         // update indices
+//         idx_low = idx_high;
+//         idx_high = std::min(idx_low + elements_within_segment, number_of_points);
+//     }
+// }
+
+// Partition points into random segments
+// Partitions along x-axis, that is the direction of forward vehicle movement
 void GroundSegmentation::formSegments(const pcl::PointCloud<pcl::PointXYZI> &cloud,
                                       std::vector<pcl::PointCloud<pcl::PointXYZIIDX>::Ptr> &cloud_segments)
 {
-    cloud_segments.clear();
-    const size_t &number_of_points = cloud.points.size();
-
-    // create indices
-    std::vector<size_t> indices;
-    indices.reserve(number_of_points);
-    for (size_t i = 0; i < number_of_points; ++i)
+    if (cloud.empty())
     {
-        indices.emplace_back(i);
+        return;
     }
 
-    // select random cloud indices
-    std::random_device random_seed_generator;
-    std::mt19937 pseudo_random_number_generator(random_seed_generator());
-    std::shuffle(indices.begin(), indices.end(), pseudo_random_number_generator);
+    const size_t &number_of_points = cloud.points.size();
 
-    // create cloud segments based on random indices
+    // sort and get indices corresponding to the point cloud that is sorted in increasing x-order
+    std::vector<size_t> sorted_indices(number_of_points);
+
+    // fill vector with increasing values, starting from 0
+    std::iota(sorted_indices.begin(), sorted_indices.end(), 0);
+
+    // sort indices using stable sort
+    const auto &cloud_points = cloud.points;
+    std::stable_sort(sorted_indices.begin(), sorted_indices.end(), [&cloud_points](size_t idx_1, size_t idx_2) -> bool {
+        return cloud_points[idx_1].x < cloud_points[idx_2].x;
+    });
+
+    // iterate over sorted indices and partition point cloud
     size_t elements_within_segment = number_of_points / number_of_segments_;
     size_t idx_low = 0;
     size_t idx_high = elements_within_segment;
     cloud_segments.reserve(number_of_segments_);
+
     for (size_t segment_no = 0; segment_no < number_of_segments_; ++segment_no)
     {
         pcl::PointCloud<pcl::PointXYZIIDX>::Ptr cloud_segment = std::make_shared<pcl::PointCloud<pcl::PointXYZIIDX>>();
+        cloud_segment->points.reserve(idx_high - idx_low + 1);
+
         for (size_t i = idx_low; i < idx_high; ++i)
         {
-            const pcl::PointXYZI &cloud_point = cloud.points[i];
-            pcl::PointXYZIIDX segment_point;
+            const size_t &index = sorted_indices[i];
+            const pcl::PointXYZI &cloud_point = cloud_points[index];
 
+            pcl::PointXYZIIDX segment_point;
             segment_point.x = cloud_point.x;
             segment_point.y = cloud_point.y;
             segment_point.z = cloud_point.z;
             segment_point.intensity = cloud_point.intensity;
-            segment_point.index = i;
+            segment_point.index = index;
 
             cloud_segment->points.emplace_back(segment_point);
         }
@@ -180,14 +238,14 @@ void GroundSegmentation::segmentGround(const pcl::PointCloud<pcl::PointXYZI> &in
 
     // extract seeds
     pcl::PointCloud<pcl::PointXYZI>::Ptr ground_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
-    pcl::PointCloud<pcl::PointXYZI>::Ptr nonground_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
+    pcl::PointCloud<pcl::PointXYZI>::Ptr non_ground_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
     extractInitialSeeds(input_cloud, *ground_cloud);
 
     // iterate for number of iterations to refine ground plane fit
     std::vector<size_t> ground_indices;
-    std::vector<size_t> nonground_indices;
+    std::vector<size_t> non_ground_indices;
     ground_indices.reserve(ground_cloud->points.size());
-    nonground_indices.reserve(ground_indices.size());
+    non_ground_indices.reserve(ground_indices.size());
     for (size_t iter_no = 0; iter_no < number_of_iterations_; ++iter_no)
     {
         if (ground_cloud->points.empty())
@@ -201,7 +259,7 @@ void GroundSegmentation::segmentGround(const pcl::PointCloud<pcl::PointXYZI> &in
         // clear old points
         ground_cloud->points.clear();
         ground_indices.clear();
-        nonground_indices.clear();
+        non_ground_indices.clear();
 
         // calculate distance from each point to the plane
         Eigen::Vector3f normal; // 3 x 1
@@ -225,7 +283,7 @@ void GroundSegmentation::segmentGround(const pcl::PointCloud<pcl::PointXYZI> &in
             }
             else
             {
-                nonground_indices.emplace_back(k);
+                non_ground_indices.emplace_back(k);
             }
         }
     }
@@ -247,7 +305,7 @@ void GroundSegmentation::segmentGround(const pcl::PointCloud<pcl::PointXYZI> &in
     }
 
     // copy nonground points into output cloud and add label = 1
-    for (const size_t &nonground_index : nonground_indices)
+    for (const size_t &nonground_index : non_ground_indices)
     {
         pcl::PointXYZIL point;
         const pcl::PointXYZI &input_point = input_cloud.points[nonground_index];
@@ -260,7 +318,7 @@ void GroundSegmentation::segmentGround(const pcl::PointCloud<pcl::PointXYZI> &in
     }
 
     std::cout << "Number of ground points: " << ground_indices.size() << std::endl;
-    std::cout << "Number of nonground points: " << nonground_indices.size() << std::endl;
+    std::cout << "Number of nonground points: " << non_ground_indices.size() << std::endl;
 }
 
 } // namespace lidar_processing
