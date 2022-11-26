@@ -34,7 +34,7 @@ struct GroundPlane
 class GroundSegmentation
 {
   public:
-    GroundSegmentation(unsigned int number_of_iterations = 3U, unsigned int number_of_segments = 3U,
+    GroundSegmentation(unsigned int number_of_iterations = 3U, unsigned int number_of_segments = 1U,
                        unsigned int number_of_lowest_point_representative_estimators = 400U,
                        float sensor_height = 1.73F, float distance_threshold = 0.3F,
                        float initial_seed_threshold = 0.6F)
@@ -64,8 +64,15 @@ class GroundSegmentation
     void formSegments(const pcl::PointCloud<pcl::PointXYZI> &cloud,
                       std::vector<pcl::PointCloud<pcl::PointXYZIIDX>::Ptr> &cloud_segments);
 
-    GroundPlane estimatePlane(const pcl::PointCloud<pcl::PointXYZI> &ground_cloud);
-    void extractInitialSeeds(const pcl::PointCloud<pcl::PointXYZI> &cloud, pcl::PointCloud<pcl::PointXYZI> &seed_cloud);
+    template <typename PointT>
+    void extractInitialSeeds(const typename pcl::PointCloud<PointT> &cloud, pcl::PointCloud<PointT> &seed_cloud);
+
+    template <typename PointT> GroundPlane estimatePlane(const typename pcl::PointCloud<PointT> &ground_cloud);
+
+    template <typename PointT>
+    void fitGroundPlane(const typename pcl::PointCloud<PointT> &cloud_segment,
+                        typename pcl::PointCloud<PointT> &ground_cloud,
+                        typename pcl::PointCloud<PointT> &non_ground_cloud);
 };
 } // namespace lidar_processing
 

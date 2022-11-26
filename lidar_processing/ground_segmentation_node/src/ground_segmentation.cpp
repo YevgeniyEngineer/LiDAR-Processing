@@ -4,14 +4,15 @@ namespace lidar_processing
 {
 // Find plane from provided ground points.
 // Plane is described by (a, b, c, d) coefficients
-GroundPlane GroundSegmentation::estimatePlane(const pcl::PointCloud<pcl::PointXYZI> &ground_cloud)
+template <typename PointT>
+GroundPlane GroundSegmentation::estimatePlane(const typename pcl::PointCloud<PointT> &ground_cloud)
 {
     const size_t &number_of_points = ground_cloud.points.size();
 
     Eigen::MatrixXf points_xyz(number_of_points, 3); // N x 3
     for (size_t i = 0; i < number_of_points; ++i)
     {
-        const pcl::PointXYZI &point = ground_cloud.points[i];
+        const PointT &point = ground_cloud.points[i];
         points_xyz(i, 0) = point.x;
         points_xyz(i, 1) = point.y;
         points_xyz(i, 2) = point.z;
@@ -40,8 +41,9 @@ GroundPlane GroundSegmentation::estimatePlane(const pcl::PointCloud<pcl::PointXY
 // sort point cloud in the increasing order of z values
 // identify points that are close to the ground level
 // copy ground point candidates into seed_cloud
-void GroundSegmentation::extractInitialSeeds(const pcl::PointCloud<pcl::PointXYZI> &cloud,
-                                             pcl::PointCloud<pcl::PointXYZI> &seed_cloud)
+template <typename PointT>
+void GroundSegmentation::extractInitialSeeds(const typename pcl::PointCloud<PointT> &cloud,
+                                             typename pcl::PointCloud<PointT> &seed_cloud)
 {
     // check the number of points in the cloud
     if (cloud.empty())
@@ -51,12 +53,11 @@ void GroundSegmentation::extractInitialSeeds(const pcl::PointCloud<pcl::PointXYZ
     const size_t &number_of_points = cloud.points.size();
 
     // firstly copy points into another vector for sorting
-    std::vector<pcl::PointXYZI> cloud_z_sorted(cloud.points.begin(), cloud.points.end());
+    typename std::vector<PointT> cloud_z_sorted(cloud.points.begin(), cloud.points.end());
 
     // sort points in the increasing z-order
-    std::sort(
-        cloud_z_sorted.begin(), cloud_z_sorted.end(),
-        [&](const pcl::PointXYZI &point_1, const pcl::PointXYZI &point_2) -> bool { return point_1.z < point_2.z; });
+    std::sort(cloud_z_sorted.begin(), cloud_z_sorted.end(),
+              [&](const PointT &point_1, const PointT &point_2) -> bool { return point_1.z < point_2.z; });
 
     // remove outlier points (points that are presumably below ground level, with some additional offset)
     const float &negative_offset_threshold = -1.5 * sensor_height_;
@@ -213,53 +214,45 @@ void GroundSegmentation::formSegments(const pcl::PointCloud<pcl::PointXYZI> &clo
     }
 }
 
-// Placed segmented cloud into segmented_cloud
-void GroundSegmentation::segmentGround(const pcl::PointCloud<pcl::PointXYZI> &input_cloud,
-                                       pcl::PointCloud<pcl::PointXYZIL> &segmented_cloud)
+// Ground segmentation for a cloud segment
+template <typename PointT>
+void GroundSegmentation::fitGroundPlane(const typename pcl::PointCloud<PointT> &cloud_segment,
+                                        typename pcl::PointCloud<PointT> &ground_cloud,
+                                        typename pcl::PointCloud<PointT> &non_ground_cloud)
+
 {
-    size_t number_of_points = input_cloud.points.size();
+    const size_t &number_of_points = cloud_segment.points.size();
     if (number_of_points == 0)
     {
         return;
     }
-    segmented_cloud.points.reserve(number_of_points);
 
-    // partition point cloud into segments
-    std::vector<pcl::PointCloud<pcl::PointXYZIIDX>::Ptr> cloud_segments;
-    formSegments(input_cloud, cloud_segments);
-
-    // convert input_cloud to matrix
+    // convert input_cloud to a matrix form
     Eigen::MatrixXf points_xyz(number_of_points, 3); // N x 3
     for (size_t i = 0; i < number_of_points; ++i)
     {
-        pcl::PointXYZI pt = input_cloud[i];
-        points_xyz.row(i) << pt.x, pt.y, pt.z;
+        const PointT &point = cloud_segment[i];
+        points_xyz.row(i) << point.x, point.y, point.z;
     }
 
-    // extract seeds
-    pcl::PointCloud<pcl::PointXYZI>::Ptr ground_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
-    pcl::PointCloud<pcl::PointXYZI>::Ptr non_ground_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
-    extractInitialSeeds(input_cloud, *ground_cloud);
+    // extract initial seeds (ground points)
+    extractInitialSeeds(cloud_segment, ground_cloud);
+    non_ground_cloud.reserve(number_of_points - ground_cloud.size());
 
     // iterate for number of iterations to refine ground plane fit
-    std::vector<size_t> ground_indices;
-    std::vector<size_t> non_ground_indices;
-    ground_indices.reserve(ground_cloud->points.size());
-    non_ground_indices.reserve(ground_indices.size());
     for (size_t iter_no = 0; iter_no < number_of_iterations_; ++iter_no)
     {
-        if (ground_cloud->points.empty())
+        if (ground_cloud.empty())
         {
             break;
         }
 
         // estimate plane parameters a, b, c, d
-        const GroundPlane &plane = estimatePlane(*ground_cloud);
+        const GroundPlane &plane = estimatePlane(ground_cloud);
 
         // clear old points
-        ground_cloud->points.clear();
-        ground_indices.clear();
-        non_ground_indices.clear();
+        ground_cloud.clear();
+        non_ground_cloud.clear();
 
         // calculate distance from each point to the plane
         Eigen::Vector3f normal; // 3 x 1
@@ -275,50 +268,90 @@ void GroundSegmentation::segmentGround(const pcl::PointCloud<pcl::PointXYZI> &in
         // label points and ground and nonground
         for (size_t k = 0; k < number_of_points; ++k)
         {
-            const pcl::PointXYZI &point = input_cloud.points[k];
+            const PointT &point = cloud_segment.points[k];
             if (distances_unnormalized[k] < scaled_distance_threshold)
             {
-                ground_cloud->points.emplace_back(point);
-                ground_indices.emplace_back(k);
+                ground_cloud.points.emplace_back(point);
             }
             else
             {
-                non_ground_indices.emplace_back(k);
+                non_ground_cloud.points.emplace_back(point);
             }
         }
     }
+}
 
-    // free some memory
-    ground_cloud.reset();
-
-    // copy ground points into output cloud and add label = 0
-    for (const size_t &ground_index : ground_indices)
+// Placed segmented cloud into segmented_cloud
+void GroundSegmentation::segmentGround(const pcl::PointCloud<pcl::PointXYZI> &input_cloud,
+                                       pcl::PointCloud<pcl::PointXYZIL> &segmented_cloud)
+{
+    size_t number_of_points = input_cloud.points.size();
+    if (number_of_points == 0)
     {
-        pcl::PointXYZIL point;
-        const pcl::PointXYZI &input_point = input_cloud.points[ground_index];
-        point.x = input_point.x;
-        point.y = input_point.y;
-        point.z = input_point.z;
-        point.intensity = input_point.intensity;
-        point.label = 0;
-        segmented_cloud.emplace_back(point);
+        return;
+    }
+    segmented_cloud.resize(number_of_points);
+
+    // partition point cloud into segments
+    std::vector<pcl::PointCloud<pcl::PointXYZIIDX>::Ptr> cloud_segments;
+    formSegments(input_cloud, cloud_segments);
+
+    // iterate over segments
+    std::vector<pcl::PointCloud<pcl::PointXYZIIDX>::Ptr> ground_cloud_segments;
+    std::vector<pcl::PointCloud<pcl::PointXYZIIDX>::Ptr> non_ground_cloud_segments;
+
+    for (pcl::PointCloud<pcl::PointXYZIIDX>::Ptr &cloud_segment : cloud_segments)
+    {
+        pcl::PointCloud<pcl::PointXYZIIDX>::Ptr ground_cloud_segment =
+            std::make_shared<pcl::PointCloud<pcl::PointXYZIIDX>>();
+
+        pcl::PointCloud<pcl::PointXYZIIDX>::Ptr non_ground_cloud_segment =
+            std::make_shared<pcl::PointCloud<pcl::PointXYZIIDX>>();
+
+        // segment points into ground and non-ground points
+        fitGroundPlane(*cloud_segment, *ground_cloud_segment, *non_ground_cloud_segment);
+
+        // accumulate into corresponding vectors
+        ground_cloud_segments.emplace_back(ground_cloud_segment);
+        non_ground_cloud_segments.emplace_back(non_ground_cloud_segment);
     }
 
-    // copy nonground points into output cloud and add label = 1
-    for (const size_t &nonground_index : non_ground_indices)
+    // combine ground and non-ground points back into a single PointCloud
+    for (const pcl::PointCloud<pcl::PointXYZIIDX>::Ptr &ground_cloud_segment : ground_cloud_segments)
     {
-        pcl::PointXYZIL point;
-        const pcl::PointXYZI &input_point = input_cloud.points[nonground_index];
-        point.x = input_point.x;
-        point.y = input_point.y;
-        point.z = input_point.z;
-        point.intensity = input_point.intensity;
-        point.label = 1;
-        segmented_cloud.emplace_back(point);
+        for (const pcl::PointXYZIIDX &ground_point : ground_cloud_segment->points)
+        {
+            const auto &index = ground_point.index;
+
+            pcl::PointXYZIL ground_point_cache;
+            ground_point_cache.x = ground_point.x;
+            ground_point_cache.y = ground_point.y;
+            ground_point_cache.z = ground_point.z;
+            ground_point_cache.intensity = ground_point.intensity;
+            ground_point_cache.label = 0; // ground label
+
+            // move cache into segmented_cloud
+            segmented_cloud.points[index] = std::move(ground_point_cache);
+        }
     }
 
-    std::cout << "Number of ground points: " << ground_indices.size() << std::endl;
-    std::cout << "Number of nonground points: " << non_ground_indices.size() << std::endl;
+    for (const pcl::PointCloud<pcl::PointXYZIIDX>::Ptr &non_ground_cloud_segment : non_ground_cloud_segments)
+    {
+        for (const pcl::PointXYZIIDX &non_ground_point : non_ground_cloud_segment->points)
+        {
+            const auto &index = non_ground_point.index;
+
+            pcl::PointXYZIL non_ground_point_cache;
+            non_ground_point_cache.x = non_ground_point.x;
+            non_ground_point_cache.y = non_ground_point.y;
+            non_ground_point_cache.z = non_ground_point.z;
+            non_ground_point_cache.intensity = non_ground_point.intensity;
+            non_ground_point_cache.label = 1; // non-ground label
+
+            // move cache into segmented_cloud
+            segmented_cloud.points[index] = std::move(non_ground_point_cache);
+        }
+    }
 }
 
 } // namespace lidar_processing
