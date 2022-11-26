@@ -34,7 +34,7 @@ struct GroundPlane
 class GroundSegmentation
 {
   public:
-    GroundSegmentation(unsigned int number_of_iterations = 3U, unsigned int number_of_segments = 1U,
+    GroundSegmentation(unsigned int number_of_iterations = 3U, unsigned int number_of_segments = 2U,
                        unsigned int number_of_lowest_point_representative_estimators = 400U,
                        float sensor_height = 1.73F, float distance_threshold = 0.3F,
                        float initial_seed_threshold = 0.6F)
@@ -58,8 +58,6 @@ class GroundSegmentation
     unsigned int number_of_iterations_;
     unsigned int number_of_segments_;
     unsigned int number_of_lowest_point_representative_estimators_;
-
-    pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_;
 
     void formSegments(const pcl::PointCloud<pcl::PointXYZI> &cloud,
                       std::vector<pcl::PointCloud<pcl::PointXYZIIDX>::Ptr> &cloud_segments);
