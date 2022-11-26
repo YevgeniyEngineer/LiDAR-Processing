@@ -51,6 +51,7 @@ class GroundSegmentationNode : public rclcpp::Node
 
     // publication message
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_visualisation_;
 
     // segmentation callback function
     void segmentGround(const sensor_msgs::msg::PointCloud2 &input_message);

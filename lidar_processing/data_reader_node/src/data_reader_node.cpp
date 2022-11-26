@@ -61,6 +61,13 @@ void PointCloudPublisher::timerCallback()
         std::cout << "Successfully read " << filename_ << std::endl;
     }
 
+    // Shift points to the sensor height
+    float sensor_height = 1.73F;
+    for (auto &pcl_point : pcl_cloud->points)
+    {
+        pcl_point.z += sensor_height;
+    }
+
     // Convert pcl::PointCloud<pcl::PointXYZI> to binary pcl::PointCloud2 format
     pcl::PCLPointCloud2::Ptr pcl_message = std::make_shared<pcl::PCLPointCloud2>();
     lidar_processing::convert(*pcl_cloud, *pcl_message);
