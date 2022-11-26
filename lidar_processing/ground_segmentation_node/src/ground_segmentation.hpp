@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <array>
 #include <memory>
+#include <random>
 #include <vector>
 
 // Eigen
@@ -31,10 +32,10 @@ struct GroundPlane
 class GroundSegmentation
 {
   public:
-    GroundSegmentation(unsigned int number_of_iterations = 3U, unsigned int number_of_segments = 1U,
-                       unsigned int number_of_lowest_point_representative_estimators = 250U,
+    GroundSegmentation(unsigned int number_of_iterations = 3U, unsigned int number_of_segments = 3U,
+                       unsigned int number_of_lowest_point_representative_estimators = 400U,
                        float sensor_height = 1.73F, float distance_threshold = 0.3F,
-                       float initial_seed_threshold = 1.2F)
+                       float initial_seed_threshold = 0.6F)
         : number_of_iterations_(number_of_iterations), number_of_segments_(number_of_segments),
           number_of_lowest_point_representative_estimators_(number_of_lowest_point_representative_estimators),
           sensor_height_(sensor_height), distance_threshold_(distance_threshold),
@@ -57,6 +58,9 @@ class GroundSegmentation
     unsigned int number_of_lowest_point_representative_estimators_;
 
     pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_;
+
+    void formSegments(const pcl::PointCloud<pcl::PointXYZI> &cloud,
+                      std::vector<pcl::PointCloud<pcl::PointXYZIIDX>::Ptr> &cloud_segments);
 
     GroundPlane estimatePlane(const pcl::PointCloud<pcl::PointXYZI> &ground_cloud);
     void extractInitialSeeds(const pcl::PointCloud<pcl::PointXYZI> &cloud, pcl::PointCloud<pcl::PointXYZI> &seed_cloud);
