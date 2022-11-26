@@ -5,12 +5,17 @@ Lidar processing pipeline based on ROS2 Humble
 ```
 mkdir build
 cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make
+cmake -DCMAKE_BUILD_TYPE=Release .. 
+cmake --build . --target all --config Release
 ```
 
-### Run Nodes
+### Launch Nodes
 ```
 ./data_reader_node
+./ground_segmentation_node
+```
+
+### Launch Visualiser
+```
 rviz2 -d config/pointcloud.rviz
 ```
