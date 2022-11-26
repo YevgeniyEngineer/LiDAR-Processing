@@ -232,24 +232,24 @@ void GroundSegmentation::fitGroundPlane(const typename pcl::PointCloud<PointT> &
 
 // Copy segmented points into segmented cloud
 // Label: 0 - ground, 1 - non-ground
-inline void copySegmentedPoints(const std::vector<pcl::PointCloud<pcl::PointXYZIIDX>::Ptr> &ground_cloud_segments,
+inline void copySegmentedPoints(const std::vector<pcl::PointCloud<pcl::PointXYZIIDX>::Ptr> &cloud_segments,
                                 pcl::PointCloud<pcl::PointXYZIL> &segmented_cloud, uint32_t label)
 {
-    for (const pcl::PointCloud<pcl::PointXYZIIDX>::Ptr &ground_cloud_segment : ground_cloud_segments)
+    for (const pcl::PointCloud<pcl::PointXYZIIDX>::Ptr &cloud_segment : cloud_segments)
     {
-        for (const pcl::PointXYZIIDX &ground_point : ground_cloud_segment->points)
+        for (const pcl::PointXYZIIDX &point : cloud_segment->points)
         {
-            const auto &index = ground_point.index;
+            const auto &index = point.index;
 
-            pcl::PointXYZIL ground_point_cache;
-            ground_point_cache.x = ground_point.x;
-            ground_point_cache.y = ground_point.y;
-            ground_point_cache.z = ground_point.z;
-            ground_point_cache.intensity = ground_point.intensity;
-            ground_point_cache.label = label;
+            pcl::PointXYZIL point_cache;
+            point_cache.x = point.x;
+            point_cache.y = point.y;
+            point_cache.z = point.z;
+            point_cache.intensity = point.intensity;
+            point_cache.label = label;
 
             // move cache into segmented_cloud
-            segmented_cloud.points[index] = std::move(ground_point_cache);
+            segmented_cloud.points[index] = std::move(point_cache);
         }
     }
 }
