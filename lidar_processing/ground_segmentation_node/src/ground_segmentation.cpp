@@ -1,6 +1,5 @@
 #include "ground_segmentation.hpp"
 #include "point_labels.hpp"
-
 namespace lidar_processing
 {
 // Partition points into random segments

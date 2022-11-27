@@ -28,10 +28,15 @@ void ObstacleClusteringNode::clusterObstacles(const sensor_msgs::msg::PointCloud
     convert(*pcl_message, *pcl_cloud);
 
     // Apply clustering and label clustered cloud (different color for each cluster)
+    std::shared_ptr<ObstacleClustering> obstacle_clustering = std::make_shared<ObstacleClustering>();
+    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr clustered_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZRGBL>>();
+    obstacle_clustering->clusterObstacles(*pcl_cloud, *clustered_cloud);
 
-    sensor_msgs::msg::PointCloud2::Ptr output_message = std::make_shared<sensor_msgs::msg::PointCloud2>();
-    // TODO: Add conversion
-    publisher_->publish(*output_message);
+    sensor_msgs::msg::PointCloud2 clustered_cloud_message;
+    convert(*clustered_cloud, clustered_cloud_message);
+    clustered_cloud_message.header.stamp = ros2_message.header.stamp;
+    clustered_cloud_message.header.frame_id = ros2_message.header.frame_id;
+    publisher_->publish(clustered_cloud_message);
 }
 } // namespace lidar_processing
 

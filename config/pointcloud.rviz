@@ -23,7 +23,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: PointCloud2
+    SyncSource: ObstacleCloud
 Visualization Manager:
   Class: ""
   Displays:
@@ -97,7 +97,7 @@ Visualization Manager:
       Max Intensity: 4096
       Min Color: 0; 0; 0
       Min Intensity: 0
-      Name: PointCloud2
+      Name: GroundCloud
       Position Transformer: XYZ
       Selectable: true
       Size (Pixels): 1
@@ -131,7 +131,7 @@ Visualization Manager:
       Max Intensity: 0.9900000095367432
       Min Color: 0; 0; 0
       Min Intensity: 0
-      Name: PointCloud2
+      Name: ObstacleCloud
       Position Transformer: XYZ
       Selectable: true
       Size (Pixels): 1
@@ -193,7 +193,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 72.26888275146484
+      Distance: 106.3890151977539
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
