@@ -81,11 +81,11 @@ void PointCloudPublisher::timerCallback()
     pcl_message->header.frame_id = "pointcloud";
 
     // Copy binary blob pcl::PCLPointCloud2 to sensor_msgs::msg::PointCloud2
-    sensor_msgs::msg::PointCloud2::Ptr ros2_message = std::make_shared<sensor_msgs::msg::PointCloud2>();
-    lidar_processing::convert(*pcl_message, *ros2_message);
+    sensor_msgs::msg::PointCloud2 ros2_message;
+    lidar_processing::convert(*pcl_message, ros2_message);
 
     // Print message info
-    for (const auto field : ros2_message->fields)
+    for (const auto field : ros2_message.fields)
     {
         std::cout << "field_name: " << field.name << std::endl;
         std::cout << "offset: " << field.offset << std::endl;
@@ -93,18 +93,18 @@ void PointCloudPublisher::timerCallback()
         std::cout << "count: " << field.count << std::endl;
     }
 
-    std::cout << "frame_id: " << ros2_message->header.frame_id << std::endl;
-    std::cout << "sec: " << ros2_message->header.stamp.sec << std::endl;
-    std::cout << "nanosec: " << ros2_message->header.stamp.nanosec << std::endl;
-    std::cout << "height: " << ros2_message->height << std::endl;
-    std::cout << "width: " << ros2_message->width << std::endl;
-    std::cout << "is_bigendian: " << ros2_message->is_bigendian << std::endl;
-    std::cout << "point_step: " << ros2_message->point_step << std::endl;
-    std::cout << "row_step: " << ros2_message->row_step << std::endl;
-    std::cout << "is_dense: " << ros2_message->is_dense << std::endl;
+    std::cout << "frame_id: " << ros2_message.header.frame_id << std::endl;
+    std::cout << "sec: " << ros2_message.header.stamp.sec << std::endl;
+    std::cout << "nanosec: " << ros2_message.header.stamp.nanosec << std::endl;
+    std::cout << "height: " << ros2_message.height << std::endl;
+    std::cout << "width: " << ros2_message.width << std::endl;
+    std::cout << "is_bigendian: " << ros2_message.is_bigendian << std::endl;
+    std::cout << "point_step: " << ros2_message.point_step << std::endl;
+    std::cout << "row_step: " << ros2_message.row_step << std::endl;
+    std::cout << "is_dense: " << ros2_message.is_dense << std::endl;
 
     // Publish poincloud
-    publisher_->publish(*ros2_message);
+    publisher_->publish(ros2_message);
 
     // Increment iterator
     ++filenames_iterator_;

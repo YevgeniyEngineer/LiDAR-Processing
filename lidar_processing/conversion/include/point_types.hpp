@@ -40,7 +40,6 @@ struct EIGEN_ALIGN16 PointXYZRGBI // enforce SSE padding for correct memory alig
     PCL_ADD_INTENSITY;
     PCL_MAKE_ALIGNED_OPERATOR_NEW // make sure our new allocators are aligned
 };
-
 } // namespace pcl
 
 POINT_CLOUD_REGISTER_POINT_STRUCT(pcl::PointXYZIL,
@@ -53,5 +52,4 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(pcl::PointXYZIIDX,
 
 POINT_CLOUD_REGISTER_POINT_STRUCT(pcl::PointXYZRGBI,
                                   (float, x, x)(float, y, y)(float, z, z)(float, rgb, rgb)(float, intensity, intensity))
-
 #endif // POINT_TYPES_HPP_

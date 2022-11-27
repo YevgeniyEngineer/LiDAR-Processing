@@ -13,11 +13,8 @@ GroundSegmentationNode::GroundSegmentationNode() : Node("ground_segmentation_nod
         "pointcloud", 10, std::bind(&GroundSegmentationNode::segmentGround, this, _1));
 
     // Publisher will publish a message whenever subcription callback is triggered
-    publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("pointcloud_segmented", 10);
-
-    // Publisher for visualisation
-    publisher_visualisation_ =
-        this->create_publisher<sensor_msgs::msg::PointCloud2>("pointcloud_segmented_visualisation", 10);
+    publisher_ground_cloud_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("ground_pointcloud", 10);
+    publisher_obstacle_cloud_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("obstacle_pointcloud", 10);
 }
 
 void GroundSegmentationNode::segmentGround(const sensor_msgs::msg::PointCloud2 &ros2_message)
@@ -34,23 +31,29 @@ void GroundSegmentationNode::segmentGround(const sensor_msgs::msg::PointCloud2 &
     // Apply segmentation and label segmented cloud as ground and nonground points
     std::shared_ptr<GroundSegmentation> ground_segmetation = std::make_shared<GroundSegmentation>();
 
-    pcl::PointCloud<pcl::PointXYZRGBI>::Ptr pcl_cloud_segmented =
-        std::make_shared<pcl::PointCloud<pcl::PointXYZRGBI>>();
+    pcl::PointCloud<pcl::PointXYZRGBI>::Ptr ground_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZRGBI>>();
+    pcl::PointCloud<pcl::PointXYZRGBI>::Ptr obstacle_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZRGBI>>();
 
     auto t1 = std::chrono::high_resolution_clock::now();
-    ground_segmetation->segmentGround(*pcl_cloud, *pcl_cloud_segmented);
+    ground_segmetation->segmentGround(*pcl_cloud, *ground_cloud, *obstacle_cloud);
     auto t2 = std::chrono::high_resolution_clock::now();
+
     std::cout << "Ground segmentation took: "
               << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() / 1000.0F << " seconds"
               << std::endl;
 
     // Convert and publish message (for further processing)
-    sensor_msgs::msg::PointCloud2::Ptr output_message = std::make_shared<sensor_msgs::msg::PointCloud2>();
-    convert(*pcl_cloud_segmented, *output_message);
-    output_message->header.stamp = ros2_message.header.stamp;
-    output_message->header.frame_id = ros2_message.header.frame_id;
+    sensor_msgs::msg::PointCloud2 obstacle_cloud_message;
+    convert(*obstacle_cloud, obstacle_cloud_message);
+    obstacle_cloud_message.header.stamp = ros2_message.header.stamp;
+    obstacle_cloud_message.header.frame_id = ros2_message.header.frame_id;
+    publisher_obstacle_cloud_->publish(obstacle_cloud_message);
 
-    publisher_->publish(*output_message);
+    sensor_msgs::msg::PointCloud2 ground_cloud_message;
+    convert(*ground_cloud, ground_cloud_message);
+    ground_cloud_message.header.stamp = ros2_message.header.stamp;
+    ground_cloud_message.header.frame_id = ros2_message.header.frame_id;
+    publisher_ground_cloud_->publish(ground_cloud_message);
 }
 } // namespace lidar_processing
 

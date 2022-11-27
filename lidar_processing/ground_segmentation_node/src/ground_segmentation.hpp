@@ -48,7 +48,8 @@ class GroundSegmentation
     ~GroundSegmentation() = default;
 
     void segmentGround(const pcl::PointCloud<pcl::PointXYZI> &input_cloud,
-                       pcl::PointCloud<pcl::PointXYZRGBI> &segmented_cloud);
+                       pcl::PointCloud<pcl::PointXYZRGBI> &ground_cloud,
+                       pcl::PointCloud<pcl::PointXYZRGBI> &obstacle_cloud);
 
   private:
     float sensor_height_;
@@ -60,7 +61,7 @@ class GroundSegmentation
     unsigned int number_of_lowest_point_representative_estimators_;
 
     void formSegments(const pcl::PointCloud<pcl::PointXYZI> &cloud,
-                      std::vector<pcl::PointCloud<pcl::PointXYZIIDX>::Ptr> &cloud_segments);
+                      std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> &cloud_segments);
 
     template <typename PointT>
     void extractInitialSeeds(const typename pcl::PointCloud<PointT> &cloud, pcl::PointCloud<PointT> &seed_cloud);
@@ -69,8 +70,8 @@ class GroundSegmentation
 
     template <typename PointT>
     void fitGroundPlane(const typename pcl::PointCloud<PointT> &cloud_segment,
-                        typename pcl::PointCloud<PointT> &ground_cloud,
-                        typename pcl::PointCloud<PointT> &non_ground_cloud);
+                        typename pcl::PointCloud<PointT> &ground_cloud_segment,
+                        typename pcl::PointCloud<PointT> &obstacle_cloud_segment);
 };
 } // namespace lidar_processing
 

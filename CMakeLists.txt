@@ -14,4 +14,4 @@ add_subdirectory(./lidar_processing/conversion)
 add_subdirectory(./lidar_processing/data_reader_node)
 add_subdirectory(./lidar_processing/transform_node)
 add_subdirectory(./lidar_processing/ground_segmentation_node)
-
+add_subdirectory(./lidar_processing/obstacle_clustering_node)
