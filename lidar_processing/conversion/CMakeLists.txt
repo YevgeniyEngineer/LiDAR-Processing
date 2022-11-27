@@ -14,6 +14,7 @@ add_definitions(${PCL_DEFINITIONS})
 add_library(conversion 
     SHARED 
         ${CMAKE_CURRENT_SOURCE_DIR}/include/conversion.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/point_labels.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/point_types.hpp
 )
 set_target_properties(conversion PROPERTIES LINKER_LANGUAGE CXX)

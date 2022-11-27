@@ -1,4 +1,5 @@
 #include "ground_segmentation.hpp"
+#include "point_labels.hpp"
 
 namespace lidar_processing
 {
@@ -233,7 +234,7 @@ void GroundSegmentation::fitGroundPlane(const typename pcl::PointCloud<PointT> &
 // Copy segmented points into segmented cloud
 // Label: 0 - ground, 1 - non-ground
 inline void copySegmentedPoints(const std::vector<pcl::PointCloud<pcl::PointXYZIIDX>::Ptr> &cloud_segments,
-                                pcl::PointCloud<pcl::PointXYZIL> &segmented_cloud, uint32_t label)
+                                pcl::PointCloud<pcl::PointXYZRGBI> &segmented_cloud, uint8_t label)
 {
     for (const pcl::PointCloud<pcl::PointXYZIIDX>::Ptr &cloud_segment : cloud_segments)
     {
@@ -241,12 +242,17 @@ inline void copySegmentedPoints(const std::vector<pcl::PointCloud<pcl::PointXYZI
         {
             const auto &index = point.index;
 
-            pcl::PointXYZIL point_cache;
+            pcl::PointXYZRGBI point_cache;
             point_cache.x = point.x;
             point_cache.y = point.y;
             point_cache.z = point.z;
+
+            lidar_processing::Color color = POINT_CLOUD_LABELS[label];
+            point_cache.r = color.r;
+            point_cache.g = color.g;
+            point_cache.b = color.b;
+
             point_cache.intensity = point.intensity;
-            point_cache.label = label;
 
             // move cache into segmented_cloud
             segmented_cloud.points[index] = std::move(point_cache);
@@ -256,7 +262,7 @@ inline void copySegmentedPoints(const std::vector<pcl::PointCloud<pcl::PointXYZI
 
 // Placed segmented cloud into segmented_cloud
 void GroundSegmentation::segmentGround(const pcl::PointCloud<pcl::PointXYZI> &input_cloud,
-                                       pcl::PointCloud<pcl::PointXYZIL> &segmented_cloud)
+                                       pcl::PointCloud<pcl::PointXYZRGBI> &segmented_cloud)
 {
     size_t number_of_points = input_cloud.points.size();
     if (number_of_points == 0)
@@ -290,8 +296,8 @@ void GroundSegmentation::segmentGround(const pcl::PointCloud<pcl::PointXYZI> &in
     }
 
     // combine ground and non-ground points back into a single PointCloud
-    copySegmentedPoints(ground_cloud_segments, segmented_cloud, 0);
-    copySegmentedPoints(non_ground_cloud_segments, segmented_cloud, 1);
+    copySegmentedPoints(ground_cloud_segments, segmented_cloud, lidar_processing::GROUND_LABEL);
+    copySegmentedPoints(non_ground_cloud_segments, segmented_cloud, lidar_processing::OBSTACLE_LABEL);
 }
 
 } // namespace lidar_processing

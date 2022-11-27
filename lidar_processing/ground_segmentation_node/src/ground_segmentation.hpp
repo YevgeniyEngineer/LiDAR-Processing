@@ -2,7 +2,7 @@
 #ifndef GROUND_SEGMENTATION_HPP_
 #define GROUND_SEGMENTATION_HPP_
 
-// new point type pcl::PointXYZIL
+// new point types
 #include "point_types.hpp"
 
 // std
@@ -48,7 +48,7 @@ class GroundSegmentation
     ~GroundSegmentation() = default;
 
     void segmentGround(const pcl::PointCloud<pcl::PointXYZI> &input_cloud,
-                       pcl::PointCloud<pcl::PointXYZIL> &segmented_cloud);
+                       pcl::PointCloud<pcl::PointXYZRGBI> &segmented_cloud);
 
   private:
     float sensor_height_;

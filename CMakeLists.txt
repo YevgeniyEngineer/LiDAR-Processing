@@ -3,7 +3,9 @@ project (lidar_processing)
 
 set(CMAKE_CXX_STANDARD 17)
 
-# In the build dir: cmake --build . --target all --config Release
+# In the build dir: 
+# cmake -DCMAKE_BUILD_TYPE=Release .. 
+# cmake --build . --target all --config Release
 
 # Where executables will be stored
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})

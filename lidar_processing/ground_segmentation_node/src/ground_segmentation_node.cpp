@@ -34,7 +34,8 @@ void GroundSegmentationNode::segmentGround(const sensor_msgs::msg::PointCloud2 &
     // Apply segmentation and label segmented cloud as ground and nonground points
     std::shared_ptr<GroundSegmentation> ground_segmetation = std::make_shared<GroundSegmentation>();
 
-    pcl::PointCloud<pcl::PointXYZIL>::Ptr pcl_cloud_segmented = std::make_shared<pcl::PointCloud<pcl::PointXYZIL>>();
+    pcl::PointCloud<pcl::PointXYZRGBI>::Ptr pcl_cloud_segmented =
+        std::make_shared<pcl::PointCloud<pcl::PointXYZRGBI>>();
 
     auto t1 = std::chrono::high_resolution_clock::now();
     ground_segmetation->segmentGround(*pcl_cloud, *pcl_cloud_segmented);
@@ -50,39 +51,6 @@ void GroundSegmentationNode::segmentGround(const sensor_msgs::msg::PointCloud2 &
     output_message->header.frame_id = ros2_message.header.frame_id;
 
     publisher_->publish(*output_message);
-
-    // Convert and publish message (for plotting)
-    // need to convert pcl::PointXYZIL to pcl::PointXYZRGB, because color transformer doesn't accept label
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pcl_plotting = std::make_shared<pcl::PointCloud<pcl::PointXYZRGB>>();
-    for (size_t i = 0; i < pcl_cloud_segmented->points.size(); ++i)
-    {
-        const pcl::PointXYZIL &pt = pcl_cloud_segmented->points[i];
-        pcl::PointXYZRGB pt_rgb;
-        pt_rgb.x = pt.x;
-        pt_rgb.y = pt.y;
-        pt_rgb.z = pt.z;
-        if (pt.label == 0) // ground - grey 220,220,220
-        {
-            pt_rgb.r = 220;
-            pt_rgb.g = 220;
-            pt_rgb.b = 220;
-            pcl_plotting->points.emplace_back(pt_rgb);
-        }
-        else // non-ground - green 0, 255, 0
-        {
-            pt_rgb.r = 0;
-            pt_rgb.g = 255;
-            pt_rgb.b = 0;
-            pcl_plotting->points.emplace_back(pt_rgb);
-        }
-    }
-
-    // convert
-    sensor_msgs::msg::PointCloud2::Ptr output_message_visualisation = std::make_shared<sensor_msgs::msg::PointCloud2>();
-    convert(*pcl_plotting, *output_message_visualisation);
-    output_message_visualisation->header.stamp = ros2_message.header.stamp;
-    output_message_visualisation->header.frame_id = ros2_message.header.frame_id;
-    publisher_visualisation_->publish(*output_message_visualisation);
 }
 } // namespace lidar_processing
 
