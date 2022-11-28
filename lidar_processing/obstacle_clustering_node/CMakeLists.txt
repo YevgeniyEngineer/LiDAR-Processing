@@ -23,6 +23,7 @@ include_directories(
 file(GLOB SOURCES
     "${PROJECT_SOURCE_DIR}/src/*.cpp"
     "${PROJECT_SOURCE_DIR}/src/*.hpp"
+    "${PROJECT_SOURCE_DIR}/include/*.hpp"
 )
 
 add_executable(${PROJECT_NAME} src/obstacle_clustering_node.cpp src/obstacle_clustering.cpp ${SOURCES})

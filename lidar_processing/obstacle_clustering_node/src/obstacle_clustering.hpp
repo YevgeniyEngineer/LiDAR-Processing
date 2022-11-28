@@ -8,6 +8,7 @@
 // std
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <memory>
 #include <numeric>
 #include <random>
@@ -23,15 +24,17 @@
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/search/kdtree.h>
 
 namespace lidar_processing
 {
-class ObstacleClustering
+class ObstacleClustering : public pcl::PCLBase<pcl::PointXYZ>
 {
   public:
-    ObstacleClustering(double neighbour_radius_threshold = 1.0, unsigned int maximum_neighbour_points = 15U)
-        : neighbour_radius_threshold_(neighbour_radius_threshold),
-          maximum_neighbour_points_(maximum_neighbour_points){};
+    ObstacleClustering(double neighbour_radius_threshold = 0.2, unsigned int maximum_neighbour_points = 1000U,
+                       unsigned int minimum_neighbour_points_threshold = 4)
+        : neighbour_radius_threshold_(neighbour_radius_threshold), maximum_neighbour_points_(maximum_neighbour_points),
+          minimum_neighbour_points_threshold_(minimum_neighbour_points_threshold){};
 
     ~ObstacleClustering() = default;
 
@@ -41,6 +44,7 @@ class ObstacleClustering
   private:
     double neighbour_radius_threshold_;
     unsigned int maximum_neighbour_points_;
+    unsigned int minimum_neighbour_points_threshold_;
 };
 } // namespace lidar_processing
 

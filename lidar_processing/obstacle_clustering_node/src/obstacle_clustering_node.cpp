@@ -13,7 +13,7 @@ ObstacleClusteringNode::ObstacleClusteringNode() : Node("obstacle_clustering_nod
         "obstacle_pointcloud", 10, std::bind(&ObstacleClusteringNode::clusterObstacles, this, _1));
 
     // Publisher will publish a message whenever subcription callback is triggered
-    publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("pointcloud_clustered", 10);
+    publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("clustered_pointcloud", 10);
 }
 
 void ObstacleClusteringNode::clusterObstacles(const sensor_msgs::msg::PointCloud2 &ros2_message)
