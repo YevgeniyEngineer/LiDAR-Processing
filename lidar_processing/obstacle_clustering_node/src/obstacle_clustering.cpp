@@ -32,7 +32,7 @@ void ObstacleClustering::clusterObstacles(const pcl::PointCloud<pcl::PointXYZRGB
     pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree = std::make_shared<pcl::search::KdTree<pcl::PointXYZ>>();
     std::vector<pcl::PointIndices> cluster_indices;
 
-    double cluster_tolerance = 1.0;
+    double cluster_tolerance = 0.5;
     double quality = 0.3;
 
     FastEuclideanClustering<pcl::PointXYZ> fast_euclidean_clustering;
@@ -41,14 +41,9 @@ void ObstacleClustering::clusterObstacles(const pcl::PointCloud<pcl::PointXYZRGB
     fast_euclidean_clustering.setClusterTolerance(cluster_tolerance);
     fast_euclidean_clustering.setQuality(quality);
     fast_euclidean_clustering.setMinClusterSize(20);
-
-    auto t1 = std::chrono::high_resolution_clock::now();
     fast_euclidean_clustering.segment(cluster_indices);
-    auto t2 = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed_time = t2 - t1;
 
     std::cout << "#clusters: " << cluster_indices.size() << std::endl;
-    std::cout << "Elapsed: " << elapsed_time.count() << "s" << std::endl;
 
     // for (const auto &cluster_index : cluster_indices)
     // {

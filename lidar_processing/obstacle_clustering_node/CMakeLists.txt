@@ -6,10 +6,14 @@ project (obstacle_clustering_node)
  
 set(CMAKE_CXX_STANDARD 17)
 
+# colcon build --packages-select obstacle_clustering_node
+
 find_package(PCL 1.7.2 REQUIRED)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
@@ -26,8 +30,13 @@ file(GLOB SOURCES
     "${PROJECT_SOURCE_DIR}/include/*.hpp"
 )
 
-add_executable(${PROJECT_NAME} src/obstacle_clustering_node.cpp src/obstacle_clustering.cpp ${SOURCES})
-ament_target_dependencies(${PROJECT_NAME} rclcpp sensor_msgs)
+add_executable(${PROJECT_NAME} src/obstacle_clustering_node.cpp src/obstacle_clustering.cpp src/convex_hull.cpp ${SOURCES})
+ament_target_dependencies(${PROJECT_NAME} rclcpp sensor_msgs geometry_msgs)
+
+# rosidl_generate_interfaces(${PROJECT_NAME}
+#     "msg/polygons.msg"
+#     DEPENDENCIES geometry_msgs
+# )
 
 target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} CONVERSION::conversion)

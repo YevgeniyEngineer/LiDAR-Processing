@@ -11,6 +11,7 @@
 
 // std
 #include <chrono>
+#include <deque>
 #include <filesystem>
 #include <functional>
 #include <memory>
@@ -18,6 +19,9 @@
 #include <vector>
 
 // ROS2
+#include <geometry_msgs/msg/point.hpp>
+#include <geometry_msgs/msg/polygon.hpp>
+#include <geometry_msgs/msg/polygon_stamped.hpp>
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/subscription.hpp>
@@ -50,7 +54,8 @@ class ObstacleClusteringNode : public rclcpp::Node
     rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr subscriber_;
 
     // publication message
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_;
+    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_cloud_;
+    rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr publisher_polygon_;
 
     // clustering callback function
     void clusterObstacles(const sensor_msgs::msg::PointCloud2 &input_message);
