@@ -32,8 +32,8 @@ void ObstacleClustering::clusterObstacles(const pcl::PointCloud<pcl::PointXYZRGB
     pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree = std::make_shared<pcl::search::KdTree<pcl::PointXYZ>>();
     std::vector<pcl::PointIndices> cluster_indices;
 
-    double cluster_tolerance = 0.5;
-    double quality = 0.5;
+    double cluster_tolerance = 1.0;
+    double quality = 0.3;
 
     FastEuclideanClustering<pcl::PointXYZ> fast_euclidean_clustering;
     fast_euclidean_clustering.setInputCloud(input_cloud);
@@ -74,9 +74,9 @@ void ObstacleClustering::clusterObstacles(const pcl::PointCloud<pcl::PointXYZRGB
             point_cache.x = point.x;
             point_cache.y = point.y;
             point_cache.z = point.z;
-            point_cache.r = std::move(r_color);
-            point_cache.g = std::move(g_color);
-            point_cache.b = std::move(b_color);
+            point_cache.r = r_color;
+            point_cache.g = g_color;
+            point_cache.b = b_color;
             point_cache.label = cluster_no;
             clustered_cloud.points.emplace_back(std::move(point_cache));
         }

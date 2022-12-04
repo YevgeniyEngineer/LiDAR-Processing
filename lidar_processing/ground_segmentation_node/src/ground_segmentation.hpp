@@ -19,8 +19,10 @@
 // PCL
 #include <pcl/common/centroid.h>
 #include <pcl/common/io.h>
+#include <pcl/filters/extract_indices.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/search/kdtree.h>
 
 namespace lidar_processing
 {
@@ -64,14 +66,13 @@ class GroundSegmentation
                       std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> &cloud_segments);
 
     template <typename PointT>
-    void extractInitialSeeds(const typename pcl::PointCloud<PointT> &cloud, pcl::PointCloud<PointT> &seed_cloud);
+    void extractInitialSeeds(const typename pcl::PointCloud<PointT> &cloud, std::vector<int> &indices);
 
-    template <typename PointT> GroundPlane estimatePlane(const typename pcl::PointCloud<PointT> &ground_cloud);
+    GroundPlane estimatePlane(const Eigen::MatrixXf &points_xyz);
 
-    template <typename PointT>
-    void fitGroundPlane(const typename pcl::PointCloud<PointT> &cloud_segment,
-                        typename pcl::PointCloud<PointT> &ground_cloud_segment,
-                        typename pcl::PointCloud<PointT> &obstacle_cloud_segment);
+    void fitGroundPlane(const pcl::PointCloud<pcl::PointXYZI> &cloud_segment,
+                        pcl::PointCloud<pcl::PointXYZI> &ground_cloud_segment,
+                        pcl::PointCloud<pcl::PointXYZI> &obstacle_cloud_segment);
 };
 } // namespace lidar_processing
 

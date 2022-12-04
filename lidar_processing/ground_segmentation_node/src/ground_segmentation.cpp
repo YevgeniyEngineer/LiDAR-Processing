@@ -52,19 +52,9 @@ void GroundSegmentation::formSegments(const pcl::PointCloud<pcl::PointXYZI> &clo
 
 // Find plane from provided ground points.
 // Plane is described by (a, b, c, d) coefficients
-template <typename PointT>
-GroundPlane GroundSegmentation::estimatePlane(const typename pcl::PointCloud<PointT> &ground_cloud)
+GroundPlane GroundSegmentation::estimatePlane(const Eigen::MatrixXf &points_xyz)
 {
-    const size_t &number_of_points = ground_cloud.points.size();
-
-    Eigen::MatrixXf points_xyz(number_of_points, 3); // N x 3
-    for (size_t i = 0; i < number_of_points; ++i)
-    {
-        const PointT &point = ground_cloud.points[i];
-        points_xyz(i, 0) = point.x;
-        points_xyz(i, 1) = point.y;
-        points_xyz(i, 2) = point.z;
-    }
+    auto number_of_points = points_xyz.rows();
 
     Eigen::RowVector3f centroid = points_xyz.colwise().mean();              // 1 x 3
     Eigen::MatrixX3f points_xyz_centered = points_xyz.rowwise() - centroid; // N x 3
@@ -91,75 +81,79 @@ GroundPlane GroundSegmentation::estimatePlane(const typename pcl::PointCloud<Poi
 // copy ground point candidates into seed_cloud
 template <typename PointT>
 void GroundSegmentation::extractInitialSeeds(const typename pcl::PointCloud<PointT> &cloud,
-                                             typename pcl::PointCloud<PointT> &seed_cloud)
+                                             std::vector<int> &ground_indices)
 {
     // check the number of points in the cloud
     if (cloud.empty())
     {
         return;
     }
-    const size_t &number_of_points = cloud.points.size();
+    auto number_of_points = cloud.points.size();
 
-    // firstly copy points into another vector for sorting
-    typename std::vector<PointT> cloud_z_sorted(cloud.points.begin(), cloud.points.end());
+    // copy points in cloud copy
+    typename std::vector<PointT> cloud_copy(cloud.points.begin(), cloud.points.end());
 
-    // sort points in the increasing z-order
-    std::sort(cloud_z_sorted.begin(), cloud_z_sorted.end(),
-              [&](const PointT &point_1, const PointT &point_2) -> bool { return point_1.z < point_2.z; });
+    // get indices of a sorted array
+    std::vector<int> cloud_indices(cloud_copy.size());
+    std::iota(cloud_indices.begin(), cloud_indices.end(), 0);
 
-    // remove outlier points (points that are presumably below ground level, with some additional offset)
-    const float &negative_offset_threshold = -1.5 * sensor_height_;
-    size_t lower_cutoff_index = 0;
-    while (cloud_z_sorted[lower_cutoff_index].z < negative_offset_threshold)
+    // apply sorting on copied point cloud
+    std::stable_sort(cloud_indices.begin(), cloud_indices.end(),
+                     [&](int index_1, int index_2) -> bool { return (cloud_copy[index_1].z < cloud_copy[index_2].z); });
+
+    // remove outlier points located below ground
+    float negative_offset_threshold = -1.5 * sensor_height_;
+    int lower_cutoff_index{0};
+    for (int i = 0; i < static_cast<int>(cloud_indices.size()); ++i)
     {
-        ++lower_cutoff_index;
+        if (cloud.points[cloud_indices[i]].z > negative_offset_threshold)
+        {
+            lower_cutoff_index = i;
+            break;
+        }
     }
-    cloud_z_sorted.erase(cloud_z_sorted.begin(), cloud_z_sorted.begin() + lower_cutoff_index);
+    cloud_indices.erase(cloud_indices.begin(), cloud_indices.begin() + lower_cutoff_index);
 
-    // if cloud is empty, it means that seeds cannot be found, so return old seeds?
-    if (cloud_z_sorted.empty())
+    // if cloud is empty, it means that seeds cannot be found
+    if (cloud_indices.empty())
     {
         return;
     }
 
     // find the average height of the lowest point representatives
     float lowest_point_representative_height = 0.0F;
-    size_t number_of_estimators =
-        std::min(cloud_z_sorted.size(), static_cast<size_t>(number_of_lowest_point_representative_estimators_));
-    for (size_t i = 0; i < number_of_estimators; ++i)
+    int number_of_estimators = std::min(static_cast<int>(cloud_indices.size()),
+                                        static_cast<int>(number_of_lowest_point_representative_estimators_));
+    for (int i = 0; i < number_of_estimators; ++i)
     {
-        lowest_point_representative_height += cloud_z_sorted[i].z;
+        lowest_point_representative_height += cloud.points[cloud_indices[i]].z;
     }
-    lowest_point_representative_height /= number_of_lowest_point_representative_estimators_;
+    lowest_point_representative_height /= number_of_estimators;
 
     // filter points that have height less that lowest_point_representative_height + initial_seed_threshold_
-    const float &cutoff_height = lowest_point_representative_height + initial_seed_threshold_;
-    size_t upper_cutoff_index = 0;
-    for (size_t i = 0; i < cloud_z_sorted.size(); ++i)
+    float cutoff_height = lowest_point_representative_height + initial_seed_threshold_;
+    int upper_cutoff_index{0};
+    for (int i = 0; i < cloud_indices.size(); ++i)
     {
-        if (cloud_z_sorted[i].z > cutoff_height)
+        if (cloud.points[cloud_indices[i]].z > cutoff_height)
         {
             upper_cutoff_index = i;
             break;
         }
     }
 
-    // clear old points
-    seed_cloud.clear();
+    // move indices
+    ground_indices.clear();
+    ground_indices.insert(ground_indices.end(), std::make_move_iterator(cloud_indices.begin()),
+                          std::make_move_iterator(cloud_indices.begin() + upper_cutoff_index));
 
-    // move points from cloud_z_sorted to seed_cloud.points
-    seed_cloud.points.insert(seed_cloud.points.end(), std::make_move_iterator(cloud_z_sorted.begin()),
-                             std::make_move_iterator(cloud_z_sorted.begin() + upper_cutoff_index));
-
-    // std::cout << "Number of seed points: " << seed_cloud.points.size() << std::endl;
+    // std::cout << "Number of seed points: " << ground_indices.points.size() << std::endl;
 }
 
 // Ground segmentation for a cloud segment
-template <typename PointT>
-void GroundSegmentation::fitGroundPlane(const typename pcl::PointCloud<PointT> &cloud_segment,
-                                        typename pcl::PointCloud<PointT> &ground_cloud_segment,
-                                        typename pcl::PointCloud<PointT> &obstacle_cloud_segment)
-
+void GroundSegmentation::fitGroundPlane(const pcl::PointCloud<pcl::PointXYZI> &cloud_segment,
+                                        pcl::PointCloud<pcl::PointXYZI> &ground_cloud_segment,
+                                        pcl::PointCloud<pcl::PointXYZI> &obstacle_cloud_segment)
 {
     const size_t &number_of_points = cloud_segment.points.size();
     if (number_of_points == 0)
@@ -171,32 +165,42 @@ void GroundSegmentation::fitGroundPlane(const typename pcl::PointCloud<PointT> &
     Eigen::MatrixXf points_xyz(number_of_points, 3); // N x 3
     for (size_t i = 0; i < number_of_points; ++i)
     {
-        const PointT &point = cloud_segment[i];
+        const pcl::PointXYZI &point = cloud_segment[i];
         points_xyz.row(i) << point.x, point.y, point.z;
     }
 
+    // to speed up emplacing points (set to maximum capacity)
+    std::vector<int> ground_cloud_indices;
+    ground_cloud_indices.reserve(number_of_points);
+
+    std::vector<int> obstacle_cloud_indices;
+    obstacle_cloud_indices.reserve(number_of_points);
+
     // extract initial seeds (ground points)
-    extractInitialSeeds(cloud_segment, ground_cloud_segment);
-    obstacle_cloud_segment.reserve(number_of_points - ground_cloud_segment.size());
+    extractInitialSeeds(cloud_segment, ground_cloud_indices);
 
     // iterate for number of iterations to refine ground plane fit
-    for (size_t iter_no = 0; iter_no < number_of_iterations_; ++iter_no)
+    for (int iter_no = 0; iter_no < number_of_iterations_; ++iter_no)
     {
-        if (ground_cloud_segment.empty())
+        // convert ground points PCL PointCloud to Eigen matrix
+        std::size_t number_of_ground_points = ground_cloud_indices.size();
+        if (number_of_ground_points == 0)
         {
             break;
         }
 
-        // estimate plane parameters a, b, c, d
-        const GroundPlane &plane = estimatePlane(ground_cloud_segment);
+        Eigen::MatrixXf ground_points_xyz(number_of_ground_points, 3); // N x 3
+        for (int i = 0; i < number_of_ground_points; ++i)
+        {
+            ground_points_xyz.row(i) = points_xyz.row(ground_cloud_indices[i]);
+        }
 
-        // clear old points
-        ground_cloud_segment.clear();
-        obstacle_cloud_segment.clear();
+        // estimate plane parameters a, b, c, d
+        const GroundPlane &plane = estimatePlane(ground_points_xyz);
 
         // calculate distance from each point to the plane
-        Eigen::Vector3f normal; // 3 x 1
-        normal << plane.a, plane.b, plane.c;
+        Eigen::Vector3f normal(3);
+        normal << plane.a, plane.b, plane.c; // 3 x 1
 
         // ax0 + by0 + cz0 - d
         Eigen::VectorXf distances_unnormalized = (points_xyz * normal).array() - plane.d;
@@ -205,19 +209,64 @@ void GroundSegmentation::fitGroundPlane(const typename pcl::PointCloud<PointT> &
         const float &scaled_distance_threshold =
             distance_threshold_ * std::sqrt(plane.a * plane.a + plane.b * plane.b + plane.c * plane.c);
 
-        // label points and ground and nonground
-        for (size_t k = 0; k < number_of_points; ++k)
+        // set indices for ground and obstacle points
+        ground_cloud_indices.clear();
+        obstacle_cloud_indices.clear();
+        for (int k = 0; k < number_of_points; ++k)
         {
-            const PointT &point = cloud_segment.points[k];
             if (distances_unnormalized[k] < scaled_distance_threshold)
             {
-                ground_cloud_segment.points.emplace_back(point);
+                ground_cloud_indices.emplace_back(k);
             }
             else
             {
-                obstacle_cloud_segment.points.emplace_back(point);
+                obstacle_cloud_indices.emplace_back(k);
             }
         }
+    }
+
+    if (ground_cloud_indices.size() != 0)
+    {
+        // copy points based on indices (ground cloud)
+        ground_cloud_segment.clear();
+        if (ground_cloud_segment.size() < ground_cloud_indices.capacity())
+        {
+            ground_cloud_segment.resize(ground_cloud_indices.size());
+        }
+        for (const auto &ground_cloud_index : ground_cloud_indices)
+        {
+            ground_cloud_segment.points.push_back(cloud_segment.points[ground_cloud_index]);
+        }
+        ground_cloud_segment.width = ground_cloud_segment.points.size();
+        ground_cloud_segment.height = 1;
+
+        // copy points based on indices (obstacle cloud)
+        obstacle_cloud_segment.clear();
+        if (obstacle_cloud_segment.size() < obstacle_cloud_indices.capacity())
+        {
+            obstacle_cloud_segment.resize(obstacle_cloud_indices.size());
+        }
+        for (const auto &obstacle_cloud_index : obstacle_cloud_indices)
+        {
+            obstacle_cloud_segment.points.push_back(cloud_segment.points[obstacle_cloud_index]);
+        }
+        obstacle_cloud_segment.width = obstacle_cloud_segment.points.size();
+        obstacle_cloud_segment.height = 1;
+    }
+    else // no ground points - everything is an obstacle
+    {
+        // copy points based on indices (obstacle cloud)
+        obstacle_cloud_segment.clear();
+        if (obstacle_cloud_segment.size() < number_of_points)
+        {
+            obstacle_cloud_segment.resize(number_of_points);
+        }
+        for (const auto &point : cloud_segment.points)
+        {
+            obstacle_cloud_segment.points.push_back(point);
+        }
+        obstacle_cloud_segment.width = obstacle_cloud_segment.points.size();
+        obstacle_cloud_segment.height = 1;
     }
 }
 
