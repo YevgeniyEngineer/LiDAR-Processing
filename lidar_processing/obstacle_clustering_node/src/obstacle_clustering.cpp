@@ -32,7 +32,7 @@ void ObstacleClustering::clusterObstacles(const pcl::PointCloud<pcl::PointXYZRGB
     pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree = std::make_shared<pcl::search::KdTree<pcl::PointXYZ>>();
     std::vector<pcl::PointIndices> cluster_indices;
 
-    double cluster_tolerance = 0.5;
+    double cluster_tolerance = 0.8;
     double quality = 0.3;
 
     FastEuclideanClustering<pcl::PointXYZ> fast_euclidean_clustering;

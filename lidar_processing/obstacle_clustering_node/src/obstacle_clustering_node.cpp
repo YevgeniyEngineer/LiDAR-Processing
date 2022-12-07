@@ -15,7 +15,7 @@ ObstacleClusteringNode::ObstacleClusteringNode() : Node("obstacle_clustering_nod
 
     // Publisher will publish a message whenever subcription callback is triggered
     publisher_cloud_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("clustered_pointcloud", 10);
-    publisher_polygon_ = this->create_publisher<geometry_msgs::msg::PolygonStamped>("obstacle_polygons", 10);
+    publisher_marker_array_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("obstacle_lines", 10);
 }
 
 void ObstacleClusteringNode::clusterObstacles(const sensor_msgs::msg::PointCloud2 &ros2_message)
@@ -67,6 +67,10 @@ void ObstacleClusteringNode::clusterObstacles(const sensor_msgs::msg::PointCloud
     std::cout << "Number of clusters: " << clusters.size() << std::endl;
 
     t1 = std::chrono::high_resolution_clock::now();
+
+    visualization_msgs::msg::MarkerArray polygons;
+    polygons.markers.reserve(clusters.size());
+    uint32_t polygon_id = 0U;
     for (const auto &cluster_points : clusters)
     {
         ConvexHull convex_hull(cluster_points);
@@ -75,21 +79,45 @@ void ObstacleClusteringNode::clusterObstacles(const sensor_msgs::msg::PointCloud
         // std::cout << "Constructed convex hull with " << number_of_hull_points << " points from original "
         //           << cluster_points.size() << " points\n";
 
-        // Construct polygon from the convex hull
-        geometry_msgs::msg::PolygonStamped polygon;
-        polygon.polygon.points.resize(cluster_hull.size());
-        for (int i = 0; i < cluster_hull.size(); ++i)
-        {
-            geometry_msgs::msg::Point32 polygon_point;
-            polygon_point.x = cluster_hull[i].x;
-            polygon_point.y = cluster_hull[i].y;
-            polygon_point.z = 0.0F;
-            polygon.polygon.points.push_back(std::move(polygon_point));
-        }
+        visualization_msgs::msg::Marker polygon;
+
+        polygon.lifetime.sec = 0.0;
+        polygon.lifetime.nanosec = 0.1 * 1e9;
         polygon.header.frame_id = clustered_cloud_message.header.frame_id;
         polygon.header.stamp = clustered_cloud_message.header.stamp;
-        publisher_polygon_->publish(polygon);
+        polygon.ns = "lidar_processing";
+        polygon.id = polygon_id;
+        ++polygon_id;
+
+        polygon.type = visualization_msgs::msg::Marker::LINE_STRIP;
+        polygon.action = visualization_msgs::msg::Marker::ADD;
+        polygon.scale.x = 0.15;
+        polygon.color.a = 1.0;
+        polygon.color.r = 1.0;
+        polygon.color.g = 0.0;
+        polygon.color.b = 1.0;
+
+        polygon.pose.position.x = 0.0;
+        polygon.pose.position.y = 0.0;
+        polygon.pose.position.z = 0.0;
+        polygon.pose.orientation.x = 0.0;
+        polygon.pose.orientation.y = 0.0;
+        polygon.pose.orientation.z = 0.0;
+        polygon.pose.orientation.w = 1.0;
+
+        polygon.points.reserve(cluster_hull.size());
+        for (int i = 0; i < cluster_hull.size(); ++i)
+        {
+            geometry_msgs::msg::Point polygon_point;
+            polygon_point.x = cluster_hull[i].x;
+            polygon_point.y = cluster_hull[i].y;
+            polygon_point.z = 0.0;
+            polygon.points.push_back(std::move(polygon_point));
+        }
+        polygons.markers.push_back(std::move(polygon));
     }
+    publisher_marker_array_->publish(polygons);
+
     t2 = std::chrono::high_resolution_clock::now();
     std::cout << "Elapsed time (polygonization): "
               << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() / 1000.0 << "s" << std::endl;

@@ -13,7 +13,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
@@ -31,12 +31,7 @@ file(GLOB SOURCES
 )
 
 add_executable(${PROJECT_NAME} src/obstacle_clustering_node.cpp src/obstacle_clustering.cpp src/convex_hull.cpp ${SOURCES})
-ament_target_dependencies(${PROJECT_NAME} rclcpp sensor_msgs geometry_msgs)
-
-# rosidl_generate_interfaces(${PROJECT_NAME}
-#     "msg/polygons.msg"
-#     DEPENDENCIES geometry_msgs
-# )
+ament_target_dependencies(${PROJECT_NAME} rclcpp sensor_msgs geometry_msgs visualization_msgs)
 
 target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} CONVERSION::conversion)

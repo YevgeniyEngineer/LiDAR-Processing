@@ -28,6 +28,7 @@
 #include <rclcpp/timer.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud_conversion.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 // PCL
 #include <pcl/PCLPointCloud2.h>
@@ -55,7 +56,7 @@ class ObstacleClusteringNode : public rclcpp::Node
 
     // publication message
     rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_cloud_;
-    rclcpp::Publisher<geometry_msgs::msg::PolygonStamped>::SharedPtr publisher_polygon_;
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr publisher_marker_array_;
 
     // clustering callback function
     void clusterObstacles(const sensor_msgs::msg::PointCloud2 &input_message);
