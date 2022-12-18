@@ -2,6 +2,7 @@
 #ifndef CONVEX_HULL_HPP_
 #define CONVEX_HULL_HPP_
 
+#include <cstdint>
 #include <deque>
 #include <iostream>
 #include <memory>
@@ -23,6 +24,7 @@ namespace lidar_processing
 typedef struct
 {
     float x, y;
+    std::uint32_t index;
 } point_t;
 
 class ConvexHull

@@ -22,15 +22,22 @@ add_definitions(${PCL_DEFINITIONS})
 include_directories(
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/fast_euclidean_clustering
+    ${PROJECT_SOURCE_DIR}/concave_hull
+    ${PROJECT_SOURCE_DIR}/convex_hull
 )
 
 file(GLOB SOURCES
     "${PROJECT_SOURCE_DIR}/src/*.cpp"
     "${PROJECT_SOURCE_DIR}/src/*.hpp"
     "${PROJECT_SOURCE_DIR}/include/*.hpp"
+    "${PROJECT_SOURCE_DIR}/fast_euclidean_clustering/fast_euclidean_clustering.hpp"
+    "${PROJECT_SOURCE_DIR}/concave_hull/concave_hull.hpp"
+    "${PROJECT_SOURCE_DIR}/convex_hull/convex_hull.hpp"
+    "${PROJECT_SOURCE_DIR}/convex_hull/convex_hull.cpp"
 )
 
-add_executable(${PROJECT_NAME} src/obstacle_clustering_node.cpp src/obstacle_clustering.cpp src/convex_hull.cpp ${SOURCES})
+add_executable(${PROJECT_NAME} ${SOURCES})
 ament_target_dependencies(${PROJECT_NAME} rclcpp sensor_msgs geometry_msgs visualization_msgs)
 
 target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES})

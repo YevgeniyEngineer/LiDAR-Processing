@@ -1,6 +1,8 @@
 #include "obstacle_clustering_node.hpp"
+#include "concave_hull.hpp"
 #include "convex_hull.hpp"
 #include "point_labels.hpp"
+
 namespace lidar_processing
 {
 using std::placeholders::_1;
@@ -50,8 +52,9 @@ void ObstacleClusteringNode::clusterObstacles(const sensor_msgs::msg::PointCloud
     std::vector<std::deque<point_t>> clusters(1);
     std::uint32_t current_rgba = clustered_cloud->points[0].rgba;
     int cluster_index = 0;
-    for (const auto &point : clustered_cloud->points)
+    for (std::uint32_t point_no = 0; point_no < clustered_cloud->points.size(); ++point_no)
     {
+        const auto &point = clustered_cloud->points[point_no];
         if (point.rgba != current_rgba)
         {
             current_rgba = point.rgba;
@@ -61,6 +64,7 @@ void ObstacleClusteringNode::clusterObstacles(const sensor_msgs::msg::PointCloud
         point_t new_2d_point;
         new_2d_point.x = point.x;
         new_2d_point.y = point.y;
+        new_2d_point.index = point_no;
         // std::cout << "new 2d point: (" << point.x << ", " << point.y << ") \n";
         clusters[cluster_index].push_back(std::move(new_2d_point));
     }
@@ -70,14 +74,40 @@ void ObstacleClusteringNode::clusterObstacles(const sensor_msgs::msg::PointCloud
 
     visualization_msgs::msg::MarkerArray polygons;
     polygons.markers.reserve(clusters.size());
-    uint32_t polygon_id = 0U;
-    for (const auto &cluster_points : clusters)
+    std::uint32_t polygon_id = 0U;
+    for (std::uint32_t cluster_no = 0U; cluster_no < clusters.size(); ++cluster_no)
     {
+        const auto &cluster_points = clusters[cluster_no];
+
+        // Convex hull calculation
         ConvexHull convex_hull(cluster_points);
-        int number_of_hull_points = static_cast<int>(cluster_points.size());
-        auto cluster_hull = convex_hull.getResultAsArray(number_of_hull_points);
-        // std::cout << "Constructed convex hull with " << number_of_hull_points << " points from original "
+        int number_of_convex_hull_points = static_cast<int>(cluster_points.size());
+        auto convex_hull_points = convex_hull.getResultAsArray(number_of_convex_hull_points);
+        // std::cout << "Constructed convex hull with " << number_of_convex_hull_points << " points from original "
         //           << cluster_points.size() << " points\n";
+
+        // Concave hull calculation
+        // std::vector<int> convex_hull_indices;
+        // convex_hull_indices.reserve(number_of_convex_hull_points);
+        // for (const auto &convex_hull_point : convex_hull_points)
+        // {
+        //     convex_hull_indices.push_back(convex_hull_point.index);
+        // }
+
+        // std::vector<std::array<float, 2>> array_of_points;
+        // array_of_points.reserve(cluster_points.size());
+        // for (const auto &cluster_point : cluster_points)
+        // {
+        //     array_of_points.push_back({cluster_point.x, cluster_point.y});
+        // }
+
+        // int concavity = 2;
+        // t1 = std::chrono::high_resolution_clock::now();
+        // auto concave_hull_points = Concaveman<float, 16>(array_of_points, convex_hull_indices, concavity);
+        // t2 = std::chrono::high_resolution_clock::now();
+        // std::cout << "Elapsed time (concave hull formation) from  " << array_of_points.size()
+        //           << " points: " << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() / 1000.0
+        //           << "s" << std::endl;
 
         visualization_msgs::msg::Marker polygon;
 
@@ -105,16 +135,27 @@ void ObstacleClusteringNode::clusterObstacles(const sensor_msgs::msg::PointCloud
         polygon.pose.orientation.z = 0.0;
         polygon.pose.orientation.w = 1.0;
 
-        polygon.points.reserve(cluster_hull.size());
-        for (int i = 0; i < cluster_hull.size(); ++i)
+        polygon.points.reserve(convex_hull_points.size());
+        for (int i = 0; i < convex_hull_points.size(); ++i)
         {
             geometry_msgs::msg::Point polygon_point;
-            polygon_point.x = cluster_hull[i].x;
-            polygon_point.y = cluster_hull[i].y;
+            polygon_point.x = convex_hull_points[i].x;
+            polygon_point.y = convex_hull_points[i].y;
             polygon_point.z = 0.0;
             polygon.points.push_back(std::move(polygon_point));
         }
         polygons.markers.push_back(std::move(polygon));
+
+        // polygon.points.reserve(concave_hull_points.size());
+        // for (int i = 0; i < concave_hull_points.size(); ++i)
+        // {
+        //     geometry_msgs::msg::Point polygon_point;
+        //     polygon_point.x = concave_hull_points[i][0];
+        //     polygon_point.y = concave_hull_points[i][1];
+        //     polygon_point.z = 0.0;
+        //     polygon.points.push_back(std::move(polygon_point));
+        // }
+        // polygons.markers.push_back(std::move(polygon));
     }
     publisher_marker_array_->publish(polygons);
 
