@@ -5,6 +5,7 @@ project(lidar_processing_pipeline)
 set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 
+find_package(TBB REQUIRED)
 find_package(PCL 1.7.2 REQUIRED)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -45,7 +46,8 @@ ament_target_dependencies(processing_node
     geometry_msgs 
     visualization_msgs
 )
-target_link_libraries(processing_node 
+target_link_libraries(processing_node
+    TBB::tbb
     ${PCL_LIBRARIES}
     ${rclcpp_LIBRARIES}
 )

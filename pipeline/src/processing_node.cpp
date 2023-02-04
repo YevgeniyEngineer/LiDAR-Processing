@@ -1,3 +1,6 @@
+// Processing
+#include "ground_segmentation.hpp"
+
 // STL
 #include <chrono>
 #include <memory>
