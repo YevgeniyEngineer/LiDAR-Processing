@@ -358,7 +358,6 @@ void GroundSegmenter::fitGroundPlane(const pcl::PointCloud<pcl::PointXYZ> &cloud
         // copy points based on indices (ground cloud)
         ground_cloud_segment.clear();
         ground_cloud_segment.reserve(ground_cloud_indices.size());
-
         for (const auto &ground_cloud_index : ground_cloud_indices)
         {
             ground_cloud_segment.points.push_back(cloud_segment.points[ground_cloud_index]);
@@ -369,10 +368,9 @@ void GroundSegmenter::fitGroundPlane(const pcl::PointCloud<pcl::PointXYZ> &cloud
         // copy points based on indices (obstacle cloud)
         obstacle_cloud_segment.clear();
         obstacle_cloud_segment.reserve(obstacle_cloud_indices.size());
-
         for (const auto &obstacle_cloud_index : obstacle_cloud_indices)
         {
-            obstacle_cloud_segment.points.push_back(cloud_segment.points[obstacle_cloud_index]);
+            obstacle_cloud_segment.points.emplace_back(cloud_segment.points[obstacle_cloud_index]);
         }
         obstacle_cloud_segment.width = obstacle_cloud_segment.points.size();
         obstacle_cloud_segment.height = 1;
@@ -383,7 +381,7 @@ void GroundSegmenter::fitGroundPlane(const pcl::PointCloud<pcl::PointXYZ> &cloud
         obstacle_cloud_segment.reserve(number_of_points);
         for (const auto &point : cloud_segment.points)
         {
-            obstacle_cloud_segment.points.push_back(point);
+            obstacle_cloud_segment.points.emplace_back(point);
         }
         obstacle_cloud_segment.width = obstacle_cloud_segment.points.size();
         obstacle_cloud_segment.height = 1;
@@ -455,7 +453,7 @@ void GroundSegmenter::segmentGround(const pcl::PointCloud<PointT> &input_cloud,
 
     // partition point cloud into segments
     std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloud_segments;
-    formSegments(input_cloud, cloud_segments);
+    formPlanarPartitions(input_cloud, cloud_segments);
 
     // iterate over segments
     std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> ground_cloud_segments;

@@ -33,12 +33,13 @@ namespace lidar_processing
 class PointCloudPublisher : public rclcpp::Node
 {
     using PointFieldTypes = pcl::PCLPointField::PointFieldTypes;
+    using PointCloud2 = sensor_msgs::msg::PointCloud2;
 
   public:
     PointCloudPublisher() : rclcpp::Node::Node("data_reader_node"), publisher_(nullptr), timer_(nullptr)
     {
         std::cout << "data_reader_node started" << std::endl;
-        publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("pointcloud", 10);
+        publisher_ = this->create_publisher<PointCloud2>("pointcloud", 10);
         timer_ = this->create_wall_timer(100ms, std::bind(&PointCloudPublisher::timerCallback, this));
 
         // Read data files from "data" directory
@@ -86,7 +87,7 @@ class PointCloudPublisher : public rclcpp::Node
         }
 
         // Convert PointCloud to PointCloud2
-        sensor_msgs::msg::PointCloud2 output_message;
+        PointCloud2 output_message;
         output_message.header.frame_id = "pointcloud";
 
         // Get seconds + nanoseconds since epoch
@@ -135,7 +136,7 @@ class PointCloudPublisher : public rclcpp::Node
     }
 
   private:
-    rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr publisher_;
+    rclcpp::Publisher<PointCloud2>::SharedPtr publisher_;
     std::shared_ptr<rclcpp::TimerBase> timer_;
 
     std::vector<std::filesystem::path> file_paths_;
