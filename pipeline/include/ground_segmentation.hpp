@@ -27,6 +27,14 @@
 
 namespace lidar_processing
 {
+struct GroundPlane
+{
+    float a, b, c, d;
+    explicit GroundPlane(const float &a_in, const float &b_in, const float &c_in, const float &d_in)
+        : a(a_in), b(b_in), c(c_in), d(d_in){};
+    ~GroundPlane() = default;
+};
+
 class GroundSegmenter
 {
   public:
@@ -75,8 +83,8 @@ class GroundSegmenter
     void extractInitialSeeds(const pcl::PointCloud<pcl::PointXYZ> &cloud, std::vector<int> &indices);
 
     void fitGroundPlane(const pcl::PointCloud<pcl::PointXYZ> &cloud_segment,
-                        pcl::PointCloud<pcl::PointXYZRGBL> &ground_cloud_segment,
-                        pcl::PointCloud<pcl::PointXYZRGBL> &obstacle_cloud_segment);
+                        pcl::PointCloud<pcl::PointXYZ> &ground_cloud_segment,
+                        pcl::PointCloud<pcl::PointXYZ> &obstacle_cloud_segment);
 
   private:
     const std::uint32_t number_of_iterations_;
@@ -86,6 +94,41 @@ class GroundSegmenter
     const float distance_threshold_;
     const float initial_seed_threshold_;
 };
+
+// Find plane from provided ground points.
+// Plane equation: ax + by + cz = d
+GroundPlane estimatePlane(const Eigen::MatrixXf &points_xyz)
+{
+    const auto number_of_points = points_xyz.rows();
+    if (number_of_points < 3)
+    {
+        throw std::runtime_error("Cannot estimate plane parameters for less than three points");
+    }
+
+    Eigen::RowVector3f centroid = points_xyz.colwise().mean();              // 1 x 3
+    Eigen::MatrixX3f points_xyz_centered = points_xyz.rowwise() - centroid; // N x 3
+    Eigen::Matrix3f covariance_matrix =
+        (points_xyz_centered.transpose() * points_xyz_centered) / static_cast<float>(number_of_points - 1); // 3 x 3
+
+    // Eigendecomposition of the covariance matrix - returns ordered eigenvalues in the increasing order
+    Eigen::JacobiSVD<Eigen::MatrixXf> svd_solver(covariance_matrix, Eigen::DecompositionOptions::ComputeFullU);
+
+    // Use least singular vector as normal
+    // Column two contains normal to the plane
+    // See https://stackoverflow.com/questions/39370370/eigen-and-svd-to-find-best-fitting-plane-given-a-set-of-points
+    Eigen::Vector3f normal_coefficients = svd_solver.matrixU().col(2);
+
+    const float &d = -(centroid * normal_coefficients)(0, 0);
+    const float &a = normal_coefficients(0, 0);
+    const float &b = normal_coefficients(1, 0);
+    const float &c = normal_coefficients(2, 0);
+
+#if DEBUG
+    std::cout << "Planar coefficients (a, b, c, d) = (" << a << ", " << b << ", " << c << ", " << d << ")" << std::endl;
+#endif
+
+    return GroundPlane(a, b, c, d);
+}
 
 // partitions space into multiple planar components
 template <typename PointT>
@@ -215,10 +258,116 @@ void GroundSegmenter::extractInitialSeeds(const pcl::PointCloud<pcl::PointXYZ> &
 #endif
 }
 
+// Ground segmentation for a planar partition
 void GroundSegmenter::fitGroundPlane(const pcl::PointCloud<pcl::PointXYZ> &cloud_segment,
-                                     pcl::PointCloud<pcl::PointXYZRGBL> &ground_cloud_segment,
-                                     pcl::PointCloud<pcl::PointXYZRGBL> &obstacle_cloud_segment)
+                                     pcl::PointCloud<pcl::PointXYZ> &ground_cloud_segment,
+                                     pcl::PointCloud<pcl::PointXYZ> &obstacle_cloud_segment)
 {
+    const size_t &number_of_points = cloud_segment.points.size();
+    if (number_of_points == 0)
+    {
+        return;
+    }
+
+    // convert input_cloud to a matrix form
+    Eigen::MatrixXf points_xyz(number_of_points, 3); // N x 3
+    for (size_t i = 0; i < number_of_points; ++i)
+    {
+        const pcl::PointXYZ &point = cloud_segment[i];
+        points_xyz.row(i) << point.x, point.y, point.z;
+    }
+
+    // to speed up emplacing points (set to maximum capacity)
+    std::vector<int> ground_cloud_indices;
+    ground_cloud_indices.reserve(number_of_points);
+
+    std::vector<int> obstacle_cloud_indices;
+    obstacle_cloud_indices.reserve(number_of_points);
+
+    // extract initial seeds (ground points)
+    extractInitialSeeds(cloud_segment, ground_cloud_indices);
+
+    // iterate for number of iterations to refine ground plane fit
+    for (int iter_no = 0; iter_no < number_of_iterations_; ++iter_no)
+    {
+        // convert ground points PCL PointCloud to Eigen matrix
+        std::size_t number_of_ground_points = ground_cloud_indices.size();
+        if (number_of_ground_points == 0)
+        {
+            break;
+        }
+
+        Eigen::MatrixXf ground_points_xyz(number_of_ground_points, 3); // N x 3
+        for (int i = 0; i < number_of_ground_points; ++i)
+        {
+            ground_points_xyz.row(i) = points_xyz.row(ground_cloud_indices[i]);
+        }
+
+        // estimate plane parameters a, b, c, d
+        const GroundPlane &plane = estimatePlane(ground_points_xyz);
+
+        // calculate distance from each point to the plane
+        Eigen::Vector3f normal(3);
+        normal << plane.a, plane.b, plane.c; // 3 x 1
+
+        // ax0 + by0 + cz0 - d
+        Eigen::VectorXf distances_unnormalized = (points_xyz * normal).array() - plane.d;
+
+        // D * sqrt(a^2 + b^2 + c^2)
+        const float &scaled_distance_threshold =
+            distance_threshold_ * std::sqrt(plane.a * plane.a + plane.b * plane.b + plane.c * plane.c);
+
+        // set indices for ground and obstacle points
+        ground_cloud_indices.clear();
+        obstacle_cloud_indices.clear();
+        for (int k = 0; k < number_of_points; ++k)
+        {
+            if (distances_unnormalized[k] < scaled_distance_threshold)
+            {
+                ground_cloud_indices.emplace_back(k);
+            }
+            else
+            {
+                obstacle_cloud_indices.emplace_back(k);
+            }
+        }
+    }
+
+    if (ground_cloud_indices.size() != 0)
+    {
+        // copy points based on indices (ground cloud)
+        ground_cloud_segment.clear();
+        ground_cloud_segment.reserve(ground_cloud_indices.size());
+
+        for (const auto &ground_cloud_index : ground_cloud_indices)
+        {
+            ground_cloud_segment.points.push_back(cloud_segment.points[ground_cloud_index]);
+        }
+        ground_cloud_segment.width = ground_cloud_segment.points.size();
+        ground_cloud_segment.height = 1;
+
+        // copy points based on indices (obstacle cloud)
+        obstacle_cloud_segment.clear();
+        obstacle_cloud_segment.reserve(obstacle_cloud_indices.size());
+
+        for (const auto &obstacle_cloud_index : obstacle_cloud_indices)
+        {
+            obstacle_cloud_segment.points.push_back(cloud_segment.points[obstacle_cloud_index]);
+        }
+        obstacle_cloud_segment.width = obstacle_cloud_segment.points.size();
+        obstacle_cloud_segment.height = 1;
+    }
+    else // no ground points - everything is an obstacle
+    {
+        obstacle_cloud_segment.clear();
+        obstacle_cloud_segment.reserve(number_of_points);
+        for (const auto &point : cloud_segment.points)
+        {
+            obstacle_cloud_segment.points.push_back(point);
+        }
+        obstacle_cloud_segment.width = obstacle_cloud_segment.points.size();
+        obstacle_cloud_segment.height = 1;
+    }
 }
 
 template <typename PointT>
