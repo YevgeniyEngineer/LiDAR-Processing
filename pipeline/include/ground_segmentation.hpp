@@ -27,18 +27,18 @@
 
 namespace lidar_processing
 {
-struct GroundPlane
-{
-    float a, b, c, d;
-    explicit GroundPlane(const float &a_in, const float &b_in, const float &c_in, const float &d_in)
-        : a(a_in), b(b_in), c(c_in), d(d_in){};
-    ~GroundPlane() = default;
-};
-
 enum class SegmentationLabels
 {
     GROUND = 0,
     OBSTACLE = 1
+};
+
+struct GroundPlane
+{
+    float a, b, c, d;
+    explicit GroundPlane(const float &a_, const float &b_, const float &c_, const float &d_)
+        : a(a_), b(c_), c(c_), d(d_){};
+    ~GroundPlane() = default;
 };
 
 struct ColorRGB
@@ -46,7 +46,7 @@ struct ColorRGB
     float r;
     float g;
     float b;
-    ColorRGB(const float &r_in, const float &g_in, const float &b_in) : r(r_in), g(g_in), b(b_in){};
+    ColorRGB(const float &r_, const float &g_, const float &b_) : r(r_), g(g_), b(b_){};
     ColorRGB() = default;
     ~ColorRGB() = default;
 };
