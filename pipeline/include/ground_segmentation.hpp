@@ -3,7 +3,9 @@
 
 // STL
 #include <algorithm>
+#include <cassert>
 #include <cstdint>
+#include <execution>
 #include <memory>
 #include <numeric>
 #include <random>
@@ -35,7 +37,29 @@ class GroundSegmenter
         : number_of_iterations_(number_of_iterations), number_of_planar_partitions_(number_of_planar_partitions),
           number_of_lowest_point_representative_estimators_(number_of_lowest_point_representative_estimators),
           sensor_height_(sensor_height), distance_threshold_(distance_threshold),
-          initial_seed_threshold_(initial_seed_threshold){};
+          initial_seed_threshold_(initial_seed_threshold)
+    {
+        if (number_of_iterations <= 0)
+        {
+            throw std::runtime_error("Number of iterations must be greater than 0");
+        }
+        if (number_of_planar_partitions <= 0)
+        {
+            throw std::runtime_error("Number of planar partitions must be greater than 0");
+        }
+        if (number_of_lowest_point_representative_estimators < 3)
+        {
+            throw std::runtime_error("Number of lowest point representative estimators must contain at least 3 points");
+        }
+        if (distance_threshold < 0)
+        {
+            throw std::runtime_error("Distance threshold must be non-negative");
+        }
+        if (initial_seed_threshold < 0)
+        {
+            throw std::runtime_error("Initial seed threshold must be non-negative");
+        }
+    };
 
     virtual ~GroundSegmenter() = default;
 
@@ -83,7 +107,7 @@ void GroundSegmenter::formPlanarPartitions(const pcl::PointCloud<PointT> &cloud,
 
     // sort indices using stable sort
     const auto &cloud_points = cloud.points;
-    std::sort(sorted_indices.begin(), sorted_indices.end(),
+    std::sort(std::execution::par, sorted_indices.begin(), sorted_indices.end(),
               [&cloud_points](const size_t &idx_1, const size_t &idx_2) -> bool {
                   return cloud_points[idx_1].x < cloud_points[idx_2].x;
               });
@@ -137,9 +161,10 @@ void GroundSegmenter::extractInitialSeeds(const pcl::PointCloud<pcl::PointXYZ> &
     std::iota(cloud_indices.begin(), cloud_indices.end(), 0);
 
     // apply sorting on copied point cloud
-    std::sort(cloud_indices.begin(), cloud_indices.end(), [&](const int &index_1, const int &index_2) -> bool {
-        return (cloud_copy[index_1].z < cloud_copy[index_2].z);
-    });
+    std::sort(std::execution::par, cloud_indices.begin(), cloud_indices.end(),
+              [&](const int &index_1, const int &index_2) -> bool {
+                  return (cloud_copy[index_1].z < cloud_copy[index_2].z);
+              });
 
     // remove outlier points located below ground
     float negative_offset_threshold = -1.5 * sensor_height_;
