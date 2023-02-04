@@ -55,6 +55,10 @@ void GroundSegmentation::formSegments(const pcl::PointCloud<pcl::PointXYZI> &clo
 GroundPlane GroundSegmentation::estimatePlane(const Eigen::MatrixXf &points_xyz)
 {
     auto number_of_points = points_xyz.rows();
+    if (number_of_points < 2)
+    {
+        throw std::runtime_error("Cannot estimate plane parameters for less than two points!\n");
+    }
 
     Eigen::RowVector3f centroid = points_xyz.colwise().mean();              // 1 x 3
     Eigen::MatrixX3f points_xyz_centered = points_xyz.rowwise() - centroid; // N x 3
@@ -65,6 +69,8 @@ GroundPlane GroundSegmentation::estimatePlane(const Eigen::MatrixXf &points_xyz)
     Eigen::JacobiSVD<Eigen::MatrixXf> svd_solver(covariance_matrix, Eigen::DecompositionOptions::ComputeFullU);
 
     // Use least singular vector as normal
+    // Column two contains normal to the plane
+    // See https://stackoverflow.com/questions/39370370/eigen-and-svd-to-find-best-fitting-plane-given-a-set-of-points
     Eigen::Vector3f normal_coefficients = svd_solver.matrixU().col(2);
 
     const float &d = -(centroid * normal_coefficients)(0, 0);

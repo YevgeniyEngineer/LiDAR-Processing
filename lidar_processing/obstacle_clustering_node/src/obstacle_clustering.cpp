@@ -33,14 +33,14 @@ void ObstacleClustering::clusterObstacles(const pcl::PointCloud<pcl::PointXYZRGB
     std::vector<pcl::PointIndices> cluster_indices;
 
     double cluster_tolerance = 0.8;
-    double quality = 0.3;
+    double quality = 0.1;
 
     FastEuclideanClustering<pcl::PointXYZ> fast_euclidean_clustering;
     fast_euclidean_clustering.setInputCloud(input_cloud);
     fast_euclidean_clustering.setSearchMethod(kdtree);
     fast_euclidean_clustering.setClusterTolerance(cluster_tolerance);
     fast_euclidean_clustering.setQuality(quality);
-    fast_euclidean_clustering.setMinClusterSize(20);
+    fast_euclidean_clustering.setMinClusterSize(10);
     fast_euclidean_clustering.segment(cluster_indices);
 
     std::cout << "#clusters: " << cluster_indices.size() << std::endl;

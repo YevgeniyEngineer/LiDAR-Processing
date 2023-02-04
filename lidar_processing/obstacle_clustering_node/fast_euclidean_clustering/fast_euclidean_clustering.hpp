@@ -114,14 +114,20 @@ template <typename PointT> class FastEuclideanClustering : public pcl::PCLBase<P
         clusters.clear();
 
         if (!initCompute() || input_->empty() || indices_->empty())
+        {
             return;
+        }
 
         if (!tree_)
         {
             if (input_->isOrganized())
+            {
                 tree_.reset(new pcl::search::OrganizedNeighbor<PointT>);
+            }
             else
+            {
                 tree_.reset(new pcl::search::KdTree<PointT>);
+            }
         }
         tree_->setInputCloud(input_, indices_);
 
@@ -140,7 +146,9 @@ template <typename PointT> class FastEuclideanClustering : public pcl::PCLBase<P
             for (auto index : *indices_)
             {
                 if (removed[index])
+                {
                     continue;
+                }
 
                 boost::add_edge(label, label, g);
 
@@ -174,7 +182,7 @@ template <typename PointT> class FastEuclideanClustering : public pcl::PCLBase<P
                         labels[q] = label;
 
                         // Must be <= to remove self (p).
-                        if (nn_distances[i] < nn_distance_threshold)
+                        if (nn_distances[i] <= nn_distance_threshold)
                         {
                             removed[q] = true;
                         }
@@ -185,7 +193,7 @@ template <typename PointT> class FastEuclideanClustering : public pcl::PCLBase<P
                     }
                 }
 
-                label++;
+                ++label;
             }
         }
 
