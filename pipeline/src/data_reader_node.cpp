@@ -86,13 +86,16 @@ class PointCloudPublisher : public rclcpp::Node
         }
 
         // Convert PointCloud to PointCloud2
-        pcl::PCLPointCloud2 output_message;
+        sensor_msgs::msg::PointCloud2 output_message;
         output_message.header.frame_id = "pointcloud";
 
-        // The value represents microseconds since 1970-01-01 00:00:00 (the UNIX epoch)
-        output_message.header.stamp = static_cast<std::uint64_t>(
-            std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch())
-                .count());
+        // Get seconds + nanoseconds since epoch
+        constexpr static double SEC_TO_NANOSEC = 1.0e9;
+        const auto nanosec_timestamp = std::chrono::system_clock::now().time_since_epoch().count();
+        output_message.header.stamp.sec = static_cast<int>(static_cast<double>(nanosec_timestamp / SEC_TO_NANOSEC));
+        output_message.header.stamp.nanosec = static_cast<std::uint32_t>(
+            nanosec_timestamp -
+            static_cast<std::int64_t>(static_cast<double>(output_message.header.stamp.sec) * SEC_TO_NANOSEC));
 
         output_message.height = point_cloud.height;
         output_message.width = point_cloud.width;
@@ -110,7 +113,7 @@ class PointCloudPublisher : public rclcpp::Node
 
         for (const auto &field : fields)
         {
-            pcl::PCLPointField field_cache;
+            sensor_msgs::msg::PointField field_cache;
             field_cache.name = std::get<0>(field);
             field_cache.offset = std::get<1>(field);
             field_cache.datatype = std::get<2>(field);
@@ -121,6 +124,14 @@ class PointCloudPublisher : public rclcpp::Node
         // Copy byte data
         output_message.data.resize(sizeof(pcl::PointXYZI) * point_cloud.size());
         std::memcpy(output_message.data.data(), point_cloud.data(), sizeof(pcl::PointXYZI) * point_cloud.size());
+
+        // Publish PCLPointCloud2
+        publisher_->publish(output_message);
+        std::cout << "Published message at (" << output_message.header.stamp.sec << ", "
+                  << output_message.header.stamp.nanosec << ")" << std::endl;
+
+        // Move to next file
+        ++file_paths_iterator_;
     }
 
   private:
