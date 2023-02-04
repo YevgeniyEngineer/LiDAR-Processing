@@ -78,27 +78,40 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     convertPointCloud2ToPCL(input_message, point_cloud);
 
     // Ground segmentation
+    const auto &ground_segmentation_start_time = std::chrono::high_resolution_clock::now();
+
     pcl::PointCloud<pcl::PointXYZRGBL> ground_cloud;
     pcl::PointCloud<pcl::PointXYZRGBL> obstacle_cloud;
     ground_segmenter.segmentGround(point_cloud, ground_cloud, obstacle_cloud);
 
-    // Convert to ROS2 format
-    PointCloud2 output_ground_segmentation_message;
-    PointCloud2 output_obstacle_segmentation_message;
+    const auto &ground_segmentation_end_time = std::chrono::high_resolution_clock::now();
+    std::cout << "Ground segmentation time: "
+              << (ground_segmentation_end_time - ground_segmentation_start_time).count() / 1e9 << std::endl;
 
+    // Convert to ROS2 format
     if (!ground_cloud.empty())
     {
+        PointCloud2 output_ground_segmentation_message;
         output_ground_segmentation_message.header = input_message.header;
         output_ground_segmentation_message.is_bigendian = input_message.is_bigendian;
         convertPCLToPointCloud2(ground_cloud, output_ground_segmentation_message);
         publisher_ground_cloud_->publish(output_ground_segmentation_message);
     }
+    else
+    {
+        std::cout << "No ground points!" << std::endl;
+    }
     if (!obstacle_cloud.empty())
     {
+        PointCloud2 output_obstacle_segmentation_message;
         output_obstacle_segmentation_message.header = input_message.header;
         output_obstacle_segmentation_message.is_bigendian = input_message.is_bigendian;
         convertPCLToPointCloud2(obstacle_cloud, output_obstacle_segmentation_message);
         publisher_obstacle_cloud_->publish(output_obstacle_segmentation_message);
+    }
+    else
+    {
+        std::cout << "No obstacle points!" << std::endl;
     }
 }
 } // namespace lidar_processing

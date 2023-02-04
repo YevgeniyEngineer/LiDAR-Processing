@@ -54,7 +54,7 @@ struct ColorRGB
 class GroundSegmenter
 {
   public:
-    explicit GroundSegmenter(std::uint32_t number_of_iterations = 3, std::uint32_t number_of_planar_partitions = 2,
+    explicit GroundSegmenter(std::uint32_t number_of_iterations = 3, std::uint32_t number_of_planar_partitions = 1,
                              std::uint32_t number_of_lowest_point_representative_estimators = 400,
                              float sensor_height = 1.73, float distance_threshold = 0.3,
                              float initial_seed_threshold = 0.6)
@@ -91,6 +91,59 @@ class GroundSegmenter
     void segmentGround(const pcl::PointCloud<PointT> &input_cloud, pcl::PointCloud<pcl::PointXYZRGBL> &ground_cloud,
                        pcl::PointCloud<pcl::PointXYZRGBL> &obstacle_cloud);
 
+    // Setters
+    void setNumberOfIterations(const std::uint32_t &number_of_iterations)
+    {
+        number_of_iterations_ = number_of_iterations;
+    }
+    void setNumberOfPlanarPartitions(const std::uint32_t &number_of_planar_partitions)
+    {
+        number_of_planar_partitions_ = number_of_planar_partitions;
+    }
+    void setNumberOfLowestPointRepresentativeEstimators(
+        const std::uint32_t &number_of_lowest_point_representative_estimators)
+    {
+        number_of_lowest_point_representative_estimators_ = number_of_lowest_point_representative_estimators;
+    }
+    void setSensorHeight(const float &sensor_height)
+    {
+        sensor_height_ = sensor_height;
+    }
+    void setDistanceThreshold(const float &distance_threshold)
+    {
+        distance_threshold_ = distance_threshold;
+    }
+    void setInitialSeedThreshold(const float &initial_seed_threshold)
+    {
+        initial_seed_threshold_ = initial_seed_threshold;
+    }
+
+    // Getters
+    const std::uint32_t &getNumberOfIterations() const
+    {
+        return number_of_iterations_;
+    }
+    const std::uint32_t &getNumberOfPlanarPartitions() const
+    {
+        return number_of_planar_partitions_;
+    }
+    const std::uint32_t &getNumberOfLowestPointRepresentativeEstimators() const
+    {
+        return number_of_lowest_point_representative_estimators_;
+    }
+    const float &getSensorHeight() const
+    {
+        return sensor_height_;
+    }
+    const float &getDistanceThreshold() const
+    {
+        return distance_threshold_;
+    }
+    const float &getInitialSeedThreshold() const
+    {
+        return initial_seed_threshold_;
+    }
+
   private:
     template <typename PointT>
     void formPlanarPartitions(const pcl::PointCloud<PointT> &cloud,
@@ -107,12 +160,12 @@ class GroundSegmenter
                                 pcl::PointCloud<pcl::PointXYZRGBL> &segmented_cloud) const;
 
   private:
-    const std::uint32_t number_of_iterations_;
-    const std::uint32_t number_of_planar_partitions_;
-    const std::uint32_t number_of_lowest_point_representative_estimators_;
-    const float sensor_height_;
-    const float distance_threshold_;
-    const float initial_seed_threshold_;
+    std::uint32_t number_of_iterations_;
+    std::uint32_t number_of_planar_partitions_;
+    std::uint32_t number_of_lowest_point_representative_estimators_;
+    float sensor_height_;
+    float distance_threshold_;
+    float initial_seed_threshold_;
 };
 
 // Find plane from provided ground points.
@@ -240,11 +293,14 @@ void GroundSegmenter::extractInitialSeeds(const pcl::PointCloud<pcl::PointXYZ> &
             break;
         }
     }
-    if (lower_cutoff_index == 0)
+    if (lower_cutoff_index > 0)
+    {
+        cloud_indices.erase(cloud_indices.begin(), cloud_indices.begin() + lower_cutoff_index);
+    }
+    if (cloud_indices.empty())
     {
         return;
     }
-    cloud_indices.erase(cloud_indices.begin(), cloud_indices.begin() + lower_cutoff_index);
 
     // find the average height of the lowest point representatives
     float lowest_point_representative_height = 0.0F;
@@ -360,7 +416,7 @@ void GroundSegmenter::fitGroundPlane(const pcl::PointCloud<pcl::PointXYZ> &cloud
         ground_cloud_segment.reserve(ground_cloud_indices.size());
         for (const auto &ground_cloud_index : ground_cloud_indices)
         {
-            ground_cloud_segment.points.push_back(cloud_segment.points[ground_cloud_index]);
+            ground_cloud_segment.points.emplace_back(cloud_segment.points[ground_cloud_index]);
         }
         ground_cloud_segment.width = ground_cloud_segment.points.size();
         ground_cloud_segment.height = 1;
@@ -419,7 +475,7 @@ void GroundSegmenter::combineSegmentedPoints(const std::vector<pcl::PointCloud<p
     point_cache.g = color.g;
     point_cache.b = color.b;
     point_cache.a = 255;
-    point_cache.label = static_cast<std::uint32_t>(segmentation_label);
+    point_cache.label = static_cast<decltype(point_cache.label)>(segmentation_label);
 
     for (const auto &cloud_segment : cloud_segments)
     {
