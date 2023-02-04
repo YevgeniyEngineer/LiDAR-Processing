@@ -148,6 +148,7 @@ int main(const int argc, const char **argv)
     rclcpp::init(argc, argv);
     rclcpp::install_signal_handlers();
 
+    bool success = true;
     try
     {
         rclcpp::spin(std::make_shared<lidar_processing::PointCloudPublisher>());
@@ -155,13 +156,20 @@ int main(const int argc, const char **argv)
     catch (const std::exception &ex)
     {
         std::cerr << "Exception: " << ex.what() << std::endl;
+        success = false;
     }
     catch (...)
     {
         std::cerr << "Unknown exception!" << std::endl;
+        success = false;
     }
 
     rclcpp::shutdown();
+
+    if (!success)
+    {
+        return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS;
 }
