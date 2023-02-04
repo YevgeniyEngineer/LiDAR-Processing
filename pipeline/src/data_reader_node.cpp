@@ -41,7 +41,7 @@ class PointCloudPublisher : public rclcpp::Node
         publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("pointcloud", 10);
         timer_ = this->create_wall_timer(100ms, std::bind(&PointCloudPublisher::timerCallback, this));
 
-        // Read data files
+        // Read data files from "data" directory
         std::filesystem::path data_path =
             std::filesystem::path(__FILE__).parent_path().parent_path().parent_path().append("data");
 
@@ -53,6 +53,10 @@ class PointCloudPublisher : public rclcpp::Node
             }
         }
 
+        // Ensure data files are correctly ordered - sort lexicographically
+        std::sort(file_paths_.begin(), file_paths_.end());
+
+        // Start iterator from the first file name
         file_paths_iterator_ = file_paths_.begin();
     };
 
