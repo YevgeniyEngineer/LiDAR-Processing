@@ -118,7 +118,7 @@ class PointCloudPublisher : public rclcpp::Node
             field_cache.offset = std::get<1>(field);
             field_cache.datatype = std::get<2>(field);
             field_cache.count = std::get<3>(field);
-            output_message.fields.emplace_back(field_cache);
+            output_message.fields.emplace_back(std::move(field_cache));
         }
 
         // Copy byte data
