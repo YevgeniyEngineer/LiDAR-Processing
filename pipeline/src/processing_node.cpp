@@ -1,6 +1,7 @@
 // Processing
 #include "conversions.hpp"
 #include "ground_segmentation.hpp"
+#include "obstacle_clustering.hpp"
 
 // STL
 #include <chrono>
@@ -71,43 +72,61 @@ class ProcessingNode : public rclcpp::Node
 void ProcessingNode::process(const PointCloud2 &input_message)
 {
     // Instantiate processing objects
-    GroundSegmenter ground_segmenter;
+    std::unique_ptr<GroundSegmenter> ground_segmenter = std::make_unique<GroundSegmenter>();
+    std::unique_ptr<ObstacleClusterer> obstacle_clusterer = std::make_unique<ObstacleClusterer>();
 
     // Convert PointCloud2 to pcl::PointCloud<pcl::PointXYZI>
-    pcl::PointCloud<pcl::PointXYZI> point_cloud;
-    convertPointCloud2ToPCL(input_message, point_cloud);
+    std::unique_ptr<pcl::PointCloud<pcl::PointXYZI>> point_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZI>>();
+    convertPointCloud2ToPCL(input_message, *point_cloud);
 
     // Ground segmentation
     const auto &ground_segmentation_start_time = std::chrono::high_resolution_clock::now();
 
-    pcl::PointCloud<pcl::PointXYZRGBL> ground_cloud;
-    pcl::PointCloud<pcl::PointXYZRGBL> obstacle_cloud;
-    ground_segmenter.segmentGround(point_cloud, ground_cloud, obstacle_cloud);
+    std::unique_ptr<pcl::PointCloud<pcl::PointXYZRGBL>> ground_cloud =
+        std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
+    std::unique_ptr<pcl::PointCloud<pcl::PointXYZRGBL>> obstacle_cloud =
+        std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
+    ground_segmenter->segmentGround(*point_cloud, *ground_cloud, *obstacle_cloud);
 
     const auto &ground_segmentation_end_time = std::chrono::high_resolution_clock::now();
     std::cout << "Ground segmentation time: "
               << (ground_segmentation_end_time - ground_segmentation_start_time).count() / 1e9 << std::endl;
 
-    // Convert to ROS2 format
-    if (!ground_cloud.empty())
+    // std::cout << "Ground Pts: " << ground_cloud->size() << " | Obstacle Pts: " << obstacle_cloud->size() <<
+    // std::endl;
+
+    // Obstacle clustering
+    const auto &obstacle_clustering_start_time = std::chrono::high_resolution_clock::now();
+
+    std::unique_ptr<pcl::PointCloud<pcl::PointXYZRGBL>> clustered_obstacle_cloud =
+        std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
+    obstacle_clusterer->clusterObstacles(*obstacle_cloud, *clustered_obstacle_cloud);
+
+    const auto &obstacle_clustering_end_time = std::chrono::high_resolution_clock::now();
+    std::cout << "Obstacle clustering time: "
+              << (obstacle_clustering_end_time - obstacle_clustering_start_time).count() / 1e9 << std::endl;
+
+    // ***** Publish data for visualisation *****
+    // Convert to ROS2 format and publish (ground segmentation)
+    if (!ground_cloud->empty())
     {
-        PointCloud2 output_ground_segmentation_message;
-        output_ground_segmentation_message.header = input_message.header;
-        output_ground_segmentation_message.is_bigendian = input_message.is_bigendian;
-        convertPCLToPointCloud2(ground_cloud, output_ground_segmentation_message);
-        publisher_ground_cloud_->publish(output_ground_segmentation_message);
+        std::unique_ptr<PointCloud2> output_ground_segmentation_message = std::make_unique<PointCloud2>();
+        output_ground_segmentation_message->header = input_message.header;
+        output_ground_segmentation_message->is_bigendian = input_message.is_bigendian;
+        convertPCLToPointCloud2(*ground_cloud, *output_ground_segmentation_message);
+        publisher_ground_cloud_->publish(*output_ground_segmentation_message);
     }
     else
     {
         std::cout << "No ground points!" << std::endl;
     }
-    if (!obstacle_cloud.empty())
+    if (!obstacle_cloud->empty())
     {
-        PointCloud2 output_obstacle_segmentation_message;
-        output_obstacle_segmentation_message.header = input_message.header;
-        output_obstacle_segmentation_message.is_bigendian = input_message.is_bigendian;
-        convertPCLToPointCloud2(obstacle_cloud, output_obstacle_segmentation_message);
-        publisher_obstacle_cloud_->publish(output_obstacle_segmentation_message);
+        std::unique_ptr<PointCloud2> output_obstacle_segmentation_message = std::make_unique<PointCloud2>();
+        output_obstacle_segmentation_message->header = input_message.header;
+        output_obstacle_segmentation_message->is_bigendian = input_message.is_bigendian;
+        convertPCLToPointCloud2(*obstacle_cloud, *output_obstacle_segmentation_message);
+        publisher_obstacle_cloud_->publish(*output_obstacle_segmentation_message);
     }
     else
     {
@@ -116,7 +135,7 @@ void ProcessingNode::process(const PointCloud2 &input_message)
 }
 } // namespace lidar_processing
 
-int main(const int argc, const char **argv)
+int main(int argc, const char **argv)
 {
     rclcpp::init(argc, argv);
     rclcpp::install_signal_handlers();

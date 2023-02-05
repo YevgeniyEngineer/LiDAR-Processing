@@ -144,7 +144,7 @@ class PointCloudPublisher : public rclcpp::Node
 };
 } // namespace lidar_processing
 
-int main(const int argc, const char **argv)
+int main(int argc, const char **argv)
 {
     rclcpp::init(argc, argv);
     rclcpp::install_signal_handlers();

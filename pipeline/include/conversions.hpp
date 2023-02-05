@@ -29,6 +29,8 @@ void convertPointCloud2ToPCL(const sensor_msgs::msg::PointCloud2 &cloud_ros, pcl
     cloud_pcl.width = cloud_ros.width;
     cloud_pcl.height = cloud_ros.height;
     cloud_pcl.is_dense = cloud_ros.is_dense;
+
+    cloud_pcl.points.clear();
     cloud_pcl.points.resize(cloud_pcl.width * cloud_pcl.height);
 
     sensor_msgs::PointCloud2ConstIterator<float> iter_x(cloud_ros, "x");
@@ -62,17 +64,18 @@ void convertPCLToPointCloud2(const pcl::PointCloud<pcl::PointXYZRGBL> &cloud_pcl
         {"rgb", offsetof(pcl::PointXYZRGBL, rgb), PointFieldTypes::FLOAT32, 1},
         {"label", offsetof(pcl::PointXYZRGBL, label), PointFieldTypes::UINT32, 1}};
 
-    sensor_msgs::msg::PointField field_cache;
     for (const auto &field : fields)
     {
+        sensor_msgs::msg::PointField field_cache;
         field_cache.name = std::get<0>(field);
         field_cache.offset = std::get<1>(field);
         field_cache.datatype = std::get<2>(field);
         field_cache.count = std::get<3>(field);
-        cloud_ros.fields.emplace_back(field_cache);
+        cloud_ros.fields.emplace_back(std::move(field_cache));
     }
 
     const std::size_t byte_size = sizeof(pcl::PointXYZRGBL) * cloud_pcl.size();
+    cloud_ros.data.clear();
     cloud_ros.data.resize(byte_size);
     std::memcpy(cloud_ros.data.data(), &cloud_pcl.at(0), byte_size);
 }

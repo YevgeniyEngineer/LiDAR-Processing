@@ -37,7 +37,7 @@ struct GroundPlane
 {
     float a, b, c, d;
     explicit GroundPlane(const float &a_, const float &b_, const float &c_, const float &d_)
-        : a(a_), b(c_), c(c_), d(d_){};
+        : a(a_), b(b_), c(c_), d(d_){};
     ~GroundPlane() = default;
 };
 
@@ -248,7 +248,7 @@ void GroundSegmenter::formPlanarPartitions(const pcl::PointCloud<PointT> &cloud,
             point_cache.y = cloud_point.y;
             point_cache.z = cloud_point.z;
 
-            cloud_segment->points.emplace_back(point_cache);
+            cloud_segment->points.push_back(point_cache);
         }
 
         cloud_segments.emplace_back(std::move(cloud_segment));
@@ -293,10 +293,7 @@ void GroundSegmenter::extractInitialSeeds(const pcl::PointCloud<pcl::PointXYZ> &
             break;
         }
     }
-    if (lower_cutoff_index > 0)
-    {
-        cloud_indices.erase(cloud_indices.begin(), cloud_indices.begin() + lower_cutoff_index);
-    }
+    cloud_indices.erase(cloud_indices.begin(), cloud_indices.begin() + lower_cutoff_index);
     if (cloud_indices.empty())
     {
         return;
@@ -330,7 +327,7 @@ void GroundSegmenter::extractInitialSeeds(const pcl::PointCloud<pcl::PointXYZ> &
                    std::make_move_iterator(cloud_indices.begin() + upper_cutoff_index));
 
 #if DEBUG
-    std::cout << "Number of seed points: " << ground_indices.points.size() << std::endl;
+    std::cout << "Number of seed points: " << indices.size() << std::endl;
 #endif
 }
 
