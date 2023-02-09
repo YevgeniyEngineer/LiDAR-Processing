@@ -184,7 +184,12 @@ GroundPlane estimatePlane(const Eigen::MatrixXf &points_xyz)
         (points_xyz_centered.transpose() * points_xyz_centered) / static_cast<float>(number_of_points - 1); // 3 x 3
 
     // Eigendecomposition of the covariance matrix - returns ordered eigenvalues in the increasing order
-    Eigen::JacobiSVD<Eigen::MatrixXf> svd_solver(covariance_matrix, Eigen::DecompositionOptions::ComputeFullU);
+
+    // See: https://eigen.tuxfamily.org/dox/group__DenseDecompositionBenchmark.html
+    // See: https://eigen.tuxfamily.org/dox-devel/group__TopicLinearAlgebraDecompositions.html#note3
+    // Eigen::JacobiSVD<Eigen::MatrixXf> svd_solver(covariance_matrix, Eigen::DecompositionOptions::ComputeFullU);
+
+    Eigen::BDCSVD<Eigen::MatrixXf> svd_solver(covariance_matrix, Eigen::ComputeThinU);
 
     // Use least singular vector as normal
     // Column two contains normal to the plane
