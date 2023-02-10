@@ -189,7 +189,7 @@ GroundPlane estimatePlane(const Eigen::MatrixXf &points_xyz)
     // See: https://eigen.tuxfamily.org/dox-devel/group__TopicLinearAlgebraDecompositions.html#note3
     // Eigen::JacobiSVD<Eigen::MatrixXf> svd_solver(covariance_matrix, Eigen::DecompositionOptions::ComputeFullU);
 
-    Eigen::BDCSVD<Eigen::MatrixXf> svd_solver(covariance_matrix, Eigen::ComputeThinU);
+    Eigen::BDCSVD<Eigen::MatrixXf> svd_solver(covariance_matrix, Eigen::DecompositionOptions::ComputeThinU);
 
     // Use least singular vector as normal
     // Column two contains normal to the plane

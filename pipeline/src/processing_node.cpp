@@ -1,5 +1,6 @@
 // Processing
 #include "conversions.hpp"
+#include "convex_hull.hpp"
 #include "ground_segmentation.hpp"
 #include "obstacle_clustering.hpp"
 
@@ -105,6 +106,26 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     const auto &obstacle_clustering_end_time = std::chrono::high_resolution_clock::now();
     std::cout << "Obstacle clustering time: "
               << (obstacle_clustering_end_time - obstacle_clustering_start_time).count() / 1e9 << std::endl;
+    // std::cout << "Number of clusters: " << clustered_obstacle_cloud.size() << std::endl;
+
+    // Polygonization
+    const auto &convex_polygon_simplification_start_time = std::chrono::high_resolution_clock::now();
+
+    std::vector<Point<float>> clustered_obstacle_points;
+    clustered_obstacle_points.reserve(clustered_obstacle_cloud->size());
+    for (int point_no = 0; point_no < clustered_obstacle_cloud->size(); ++point_no)
+    {
+        const auto &point = clustered_obstacle_cloud->points[point_no];
+        clustered_obstacle_points.emplace_back(point.x, point.y, point_no);
+    }
+    ConvexHullGenerator<float> convex_hull_generator{clustered_obstacle_points, true};
+    const std::vector<Point<float>> &convex_hull_points = convex_hull_generator.getConvexHull();
+    // std::cout << "Number of convex hull points: " << convex_hull_points.size() << std::endl;
+
+    const auto &convex_polygon_simplification_end_time = std::chrono::high_resolution_clock::now();
+    std::cout << "Convex polygon simplification time: "
+              << (convex_polygon_simplification_end_time - convex_polygon_simplification_start_time).count() / 1e9
+              << std::endl;
 
     // ***** Publish data for visualisation *****
     // Convert to ROS2 format and publish (ground segmentation)
@@ -132,6 +153,8 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     {
         std::cout << "No obstacle points!" << std::endl;
     }
+
+    // Convert to ROS2 format and publish (obstacle clustering - polygonization)
 }
 } // namespace lidar_processing
 

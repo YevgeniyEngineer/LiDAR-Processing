@@ -7,6 +7,7 @@ set (CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(TBB REQUIRED)
 find_package(PCL 1.7.2 REQUIRED)
+find_package(Eigen3 3.4 REQUIRED NO_MODULE)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -48,6 +49,7 @@ ament_target_dependencies(processing_node
 )
 target_link_libraries(processing_node
     TBB::tbb
+    Eigen3::Eigen
     ${PCL_LIBRARIES}
     ${rclcpp_LIBRARIES}
 )

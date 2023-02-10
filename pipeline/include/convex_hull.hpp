@@ -1,6 +1,8 @@
 #ifndef CONVEX_HULL
 #define CONVEX_HULL
 
+#include "internal_types.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <deque>
@@ -11,113 +13,79 @@
 #include <tuple>
 #include <vector>
 
-// Point type
-template <typename _PointType> struct Point
-{
-    explicit Point(_PointType xp, _PointType yp, std::size_t indexp) : x(xp), y(yp), index(indexp){};
-    explicit Point(_PointType xp, _PointType yp) : x(xp), y(yp), index(0){};
-
-    ~Point() = default;
-
-    friend bool operator==(const Point<_PointType> &lhs, const Point<_PointType> &rhs)
-    {
-        return (lhs.x == rhs.x && lhs.y == rhs.y);
-    }
-
-    _PointType x;
-    _PointType y;
-    std::size_t index;
-};
-
-// Quadrant type
-template <typename _PointType> struct Quadrant
-{
-    explicit Quadrant(const Point<_PointType> &fp, const Point<_PointType> &lp, const Point<_PointType> &rp)
-        : first_point(fp), last_point(lp), root_point(rp){};
-
-    ~Quadrant() = default;
-
-    Point<_PointType> first_point;
-    Point<_PointType> last_point;
-    Point<_PointType> root_point;
-};
-
 // Helper methods
 template <typename Floating, std::enable_if_t<std::is_floating_point<Floating>::value, int> = 0>
-inline bool areEqual(const Floating &value_1, const Floating &value_2)
+inline bool areEqual(const Floating &value_1, const Floating &value_2) noexcept
 {
     return std::fabs(value_1 - value_2) < std::numeric_limits<Floating>::epsilon();
 }
 
 template <typename Integer, std::enable_if_t<std::is_integral<Integer>::value, int> = 0>
-inline bool areEqual(const Integer &value_1, const Integer &value_2)
+inline bool areEqual(const Integer &value_1, const Integer &value_2) noexcept
 {
     return (value_1 == value_2);
 }
 
-template <typename _PointType>
-inline _PointType getArea(const Point<_PointType> &a, const Point<_PointType> &b, const Point<_PointType> &c)
+template <typename T> inline T getArea(const Point<T> &a, const Point<T> &b, const Point<T> &c) noexcept
 {
     return (((b).x - (a).x) * ((c).y - (a).y) - ((b).y - (a).y) * ((c).x - (a).x));
 }
 
-template <typename _PointType>
-inline bool rightTurn(const Point<_PointType> &a, const Point<_PointType> &b, const Point<_PointType> &c)
+template <typename T> inline bool rightTurn(const Point<T> &a, const Point<T> &b, const Point<T> &c) noexcept
 {
     return getArea(a, b, c) < 0;
 }
 
-template <typename _PointType>
-inline bool leftTurn(const Point<_PointType> &a, const Point<_PointType> &b, const Point<_PointType> &c)
+template <typename T> inline bool leftTurn(const Point<T> &a, const Point<T> &b, const Point<T> &c) noexcept
 {
     return getArea(a, b, c) > 0;
 }
 
-template <typename _PointType, std::enable_if_t<std::is_floating_point<_PointType>::value, int> = 0>
-inline bool collinear(const Point<_PointType> &a, const Point<_PointType> &b, const Point<_PointType> &c)
+template <typename T, std::enable_if_t<std::is_floating_point<T>::value, int> = 0>
+inline bool collinear(const Point<T> &a, const Point<T> &b, const Point<T> &c) noexcept
 {
-    return std::fabs(getArea(a, b, c)) <= std::numeric_limits<_PointType>::epsilon();
+    return std::fabs(getArea(a, b, c)) <= std::numeric_limits<T>::epsilon();
 }
 
-template <typename _PointType, std::enable_if_t<std::is_integral<_PointType>::value, int> = 0>
-inline bool collinear(const Point<_PointType> &a, const Point<_PointType> &b, const Point<_PointType> &c)
+template <typename T, std::enable_if_t<std::is_integral<T>::value, int> = 0>
+inline bool collinear(const Point<T> &a, const Point<T> &b, const Point<T> &c) noexcept
 {
     return getArea(a, b, c) == 0;
 }
 
-template <typename _PointType> inline std::int8_t sign(const _PointType x)
+template <typename T> inline std::int8_t sign(const T x) noexcept
 {
     return (x < 0) ? -1 : ((x > 0) ? 1 : 0);
 }
 
-template <typename _PointType> inline std::int8_t cmp(const Point<_PointType> &a, const Point<_PointType> &b)
+template <typename T> inline std::int8_t cmp(const Point<T> &a, const Point<T> &b) noexcept
 {
     return (areEqual(a.x, b.x) ? sign(a.y - b.y) : sign(a.x - b.x));
 }
 
-template <typename _PointType> inline bool comparePoints(const Point<_PointType> &a, const Point<_PointType> &b)
+template <typename T> inline bool comparePoints(const Point<T> &a, const Point<T> &b) noexcept
 {
     return (areEqual(a.x, b.x) && areEqual(a.y, b.y));
 }
 
 // Convex hull
-template <typename _PointType> class ConvexHull
+template <typename T> class ConvexHullGenerator
 {
   private:
     // Input points
-    std::vector<Point<_PointType>> points_;
+    std::vector<Point<T>> points_;
 
     // Quadrant Boundary Points
-    std::unique_ptr<Quadrant<_PointType>> q1_;
-    std::unique_ptr<Quadrant<_PointType>> q2_;
-    std::unique_ptr<Quadrant<_PointType>> q3_;
-    std::unique_ptr<Quadrant<_PointType>> q4_;
+    std::unique_ptr<Quadrant<T>> q1_;
+    std::unique_ptr<Quadrant<T>> q2_;
+    std::unique_ptr<Quadrant<T>> q3_;
+    std::unique_ptr<Quadrant<T>> q4_;
 
     // Quadrant Points
-    std::deque<Point<_PointType>> q1_pts_;
-    std::deque<Point<_PointType>> q2_pts_;
-    std::deque<Point<_PointType>> q3_pts_;
-    std::deque<Point<_PointType>> q4_pts_;
+    std::deque<Point<T>> q1_pts_;
+    std::deque<Point<T>> q2_pts_;
+    std::deque<Point<T>> q3_pts_;
+    std::deque<Point<T>> q4_pts_;
 
     // Quadrant Point Count
     std::size_t q1_count_ = 0;
@@ -127,25 +95,32 @@ template <typename _PointType> class ConvexHull
 
     // Convex Hull
     bool should_close_the_graph_;
-    std::vector<Point<_PointType>> convex_hull_points_;
+    std::vector<Point<T>> convex_hull_points_;
 
   public:
-    explicit ConvexHull(const std::vector<Point<_PointType>> &points, bool should_close_the_graph = true)
+    explicit ConvexHullGenerator(const std::vector<Point<T>> &points, bool should_close_the_graph = true)
         : points_(points), should_close_the_graph_(should_close_the_graph)
     {
-        if (points.empty())
+        if (!points_.empty())
         {
-            throw std::runtime_error("Cannot construct convex hull from empty container!");
+            calculateConvexHull();
         }
     };
 
-    ~ConvexHull() = default;
+    ~ConvexHullGenerator() = default;
 
-    const std::vector<Point<_PointType>> &getConvexHull() const
+    // Caution, return by const ref!
+    const std::vector<Point<T>> &getConvexHull() const
     {
         return convex_hull_points_;
     }
 
+    std::tuple<Quadrant<T>, Quadrant<T>, Quadrant<T>, Quadrant<T>> getQuadrantPoints() const
+    {
+        return std::make_tuple(*q1_, *q2_, *q3_, *q4_);
+    }
+
+  private:
     void calculateConvexHull()
     {
         // See: https://www.codeproject.com/Articles/775753/A-Convex-Hull-Algorithm-and-its-implementation-in
@@ -160,16 +135,9 @@ template <typename _PointType> class ConvexHull
         combineHullPoints();
     }
 
-    std::tuple<Quadrant<_PointType>, Quadrant<_PointType>, Quadrant<_PointType>, Quadrant<_PointType>>
-    getQuadrantPoints() const
-    {
-        return std::make_tuple(*q1_, *q2_, *q3_, *q4_);
-    }
-
-  private:
     void setQuadrantLimits()
     {
-        const Point<_PointType> &first_point = points_[0];
+        const Point<T> &first_point = points_[0];
         const auto x_first_point = first_point.x;
         const auto y_first_point = first_point.y;
 
@@ -201,12 +169,12 @@ template <typename _PointType> class ConvexHull
         //         \ |
         //          \|
 
-        Point<_PointType> q1_start = first_point, q1_end = first_point, q1_root = first_point;
-        Point<_PointType> q2_start = first_point, q2_end = first_point, q2_root = first_point;
-        Point<_PointType> q3_start = first_point, q3_end = first_point, q3_root = first_point;
-        Point<_PointType> q4_start = first_point, q4_end = first_point, q4_root = first_point;
+        Point<T> q1_start = first_point, q1_end = first_point, q1_root = first_point;
+        Point<T> q2_start = first_point, q2_end = first_point, q2_root = first_point;
+        Point<T> q3_start = first_point, q3_end = first_point, q3_root = first_point;
+        Point<T> q4_start = first_point, q4_end = first_point, q4_root = first_point;
 
-        for (const Point<_PointType> &point : points_)
+        for (const Point<T> &point : points_)
         {
             // top right
             if (point.x > q1_start.x)
@@ -295,14 +263,14 @@ template <typename _PointType> class ConvexHull
         q4_root.y = q4_end.y;
 
         // Set quadrant limits
-        q1_ = std::make_unique<Quadrant<_PointType>>(q1_start, q1_end, q1_root);
-        q2_ = std::make_unique<Quadrant<_PointType>>(q2_start, q2_end, q2_root);
-        q3_ = std::make_unique<Quadrant<_PointType>>(q3_start, q3_end, q3_root);
-        q4_ = std::make_unique<Quadrant<_PointType>>(q4_start, q4_end, q4_root);
+        q1_ = std::make_unique<Quadrant<T>>(q1_start, q1_end, q1_root);
+        q2_ = std::make_unique<Quadrant<T>>(q2_start, q2_end, q2_root);
+        q3_ = std::make_unique<Quadrant<T>>(q3_start, q3_end, q3_root);
+        q4_ = std::make_unique<Quadrant<T>>(q4_start, q4_end, q4_root);
 
         // Initialize quadrants
-        auto initializeQuadrant = [&](std::deque<Point<_PointType>> &points, std::size_t &hull_count,
-                                      const Point<_PointType> &point_1, const Point<_PointType> &point_2) -> void {
+        auto initializeQuadrant = [&](std::deque<Point<T>> &points, std::size_t &hull_count, const Point<T> &point_1,
+                                      const Point<T> &point_2) -> void {
             points.push_back(point_1);
             if (comparePoints(point_1, point_2))
             {
@@ -322,23 +290,23 @@ template <typename _PointType> class ConvexHull
     }
 
     // Insert point into convex hull
-    inline void insertPoint(std::deque<Point<_PointType>> &points, const std::size_t index,
-                            const Point<_PointType> &point, std::size_t &count)
+    inline void insertPoint(std::deque<Point<T>> &points, const std::size_t index, const Point<T> &point,
+                            std::size_t &count)
     {
         points.insert(points.begin() + index, point);
         ++count;
     }
 
     // Remove every item from index start to index end inclusive
-    inline void removeRange(std::deque<Point<_PointType>> &points, const std::size_t index_start,
-                            const std::size_t index_end, std::size_t &count)
+    inline void removeRange(std::deque<Point<T>> &points, const std::size_t index_start, const std::size_t index_end,
+                            std::size_t &count)
     {
         points.erase(points.begin() + index_start, points.begin() + index_end + 1);
         count -= (index_end - index_start + 1);
     }
 
-    inline void updatePoints(std::size_t &index_low, std::size_t &index_high, std::deque<Point<_PointType>> &points,
-                             const Point<_PointType> &point, std::size_t &count)
+    inline void updatePoints(std::size_t &index_low, std::size_t &index_high, std::deque<Point<T>> &points,
+                             const Point<T> &point, std::size_t &count)
     {
         while (index_low > 0)
         {
@@ -372,7 +340,7 @@ template <typename _PointType> class ConvexHull
         }
     }
 
-    inline bool checkIfBelongsToFirstQuadrant(const Point<_PointType> &point)
+    inline bool checkIfBelongsToFirstQuadrant(const Point<T> &point)
     {
         if (point.x > q1_->root_point.x && point.y > q1_->root_point.y)
         {
@@ -409,7 +377,7 @@ template <typename _PointType> class ConvexHull
         return false;
     }
 
-    inline bool checkIfBelongsToSecondQuadrant(const Point<_PointType> &point)
+    inline bool checkIfBelongsToSecondQuadrant(const Point<T> &point)
     {
         if (point.x < q2_->root_point.x && point.y > q2_->root_point.y)
         {
@@ -446,7 +414,7 @@ template <typename _PointType> class ConvexHull
         return false;
     }
 
-    inline bool checkIfBelongsToThirdQuadrant(const Point<_PointType> &point)
+    inline bool checkIfBelongsToThirdQuadrant(const Point<T> &point)
     {
         if (point.x < q3_->root_point.x && point.y < q3_->root_point.y)
         {
@@ -484,7 +452,7 @@ template <typename _PointType> class ConvexHull
         return false;
     }
 
-    inline bool checkIfBelongsToFourthQuadrant(const Point<_PointType> &point)
+    inline bool checkIfBelongsToFourthQuadrant(const Point<T> &point)
     {
         if (point.x > q4_->root_point.x && point.y < q4_->root_point.y)
         {
@@ -523,7 +491,7 @@ template <typename _PointType> class ConvexHull
 
     void accumulateHullPoints()
     {
-        for (const Point<_PointType> &point : points_)
+        for (const Point<T> &point : points_)
         {
             if (checkIfBelongsToFirstQuadrant(point))
             {
@@ -551,10 +519,10 @@ template <typename _PointType> class ConvexHull
         std::size_t index_q2_start, index_q2_end;
         std::size_t index_q3_start, index_q3_end;
         std::size_t index_q4_start, index_q4_end;
-        Point<_PointType> point_last = q1_pts_[index_q1_end];
+        Point<T> point_last = q1_pts_[index_q1_end];
 
         auto setPoints = [&point_last](const std::size_t count, std::size_t &idx_start, std::size_t &idx_end,
-                                       const std::deque<Point<_PointType>> &points) -> void {
+                                       const std::deque<Point<T>> &points) -> void {
             if (count == 1)
             {
                 if (comparePoints(points[0], point_last))
