@@ -5,6 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
+        - /ObstacleOutlines1
       Splitter Ratio: 0.5
     Tree Height: 579
   - Class: rviz_common/Selection
@@ -24,7 +25,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: PointCloud
+    SyncSource: ObstaclesCloud
 Visualization Manager:
   Class: ""
   Displays:
@@ -148,6 +149,18 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: ObstacleOutlines
+      Namespaces:
+        convex_hull: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /convex_polygonization
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -194,16 +207,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 76.6242446899414
+      Distance: 127.96734619140625
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -4.573433876037598
-        Y: 2.713762044906616
-        Z: -2.40726900100708
+        X: -7.005808353424072
+        Y: 2.5738790035247803
+        Z: -3.821134090423584
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false

@@ -48,6 +48,7 @@ class ProcessingNode : public rclcpp::Node
         // Publisher nodes
         publisher_ground_cloud_ = this->create_publisher<PointCloud2>("ground_pointcloud", 10);
         publisher_obstacle_cloud_ = this->create_publisher<PointCloud2>("obstacle_pointcloud", 10);
+        publisher_obstacle_convex_hulls_ = this->create_publisher<MarkerArray>("convex_polygonization", 10);
     }
 
     ~ProcessingNode() = default;
@@ -99,9 +100,8 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     // Obstacle clustering
     const auto &obstacle_clustering_start_time = std::chrono::high_resolution_clock::now();
 
-    std::unique_ptr<pcl::PointCloud<pcl::PointXYZRGBL>> clustered_obstacle_cloud =
-        std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
-    obstacle_clusterer->clusterObstacles(*obstacle_cloud, *clustered_obstacle_cloud);
+    std::vector<pcl::PointCloud<pcl::PointXYZ>> clustered_obstacle_cloud;
+    obstacle_clusterer->clusterObstacles(*obstacle_cloud, clustered_obstacle_cloud);
 
     const auto &obstacle_clustering_end_time = std::chrono::high_resolution_clock::now();
     std::cout << "Obstacle clustering time: "
@@ -111,16 +111,28 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     // Polygonization
     const auto &convex_polygon_simplification_start_time = std::chrono::high_resolution_clock::now();
 
-    std::vector<Point<float>> clustered_obstacle_points;
-    clustered_obstacle_points.reserve(clustered_obstacle_cloud->size());
-    for (int point_no = 0; point_no < clustered_obstacle_cloud->size(); ++point_no)
+    // Convert 3D to 2D
+    ConvexHullGenerator<float> convex_hull_generator(true);
+    std::vector<std::vector<Point<float>>> convex_hulls;
+    convex_hulls.reserve(clustered_obstacle_cloud.size());
+
+    for (int cluster_no = 0; cluster_no < clustered_obstacle_cloud.size(); ++cluster_no)
     {
-        const auto &point = clustered_obstacle_cloud->points[point_no];
-        clustered_obstacle_points.emplace_back(point.x, point.y, point_no);
+        const auto &cluster = clustered_obstacle_cloud[cluster_no];
+        std::size_t cluster_point_no = 0;
+        std::vector<Point<float>> cluster_points;
+        cluster_points.reserve(cluster.points.size());
+        for (const auto &point : cluster.points)
+        {
+            cluster_points.emplace_back(point.x, point.y, cluster_point_no);
+            ++cluster_point_no;
+        }
+        std::vector<Point<float>> hull_points;
+        convex_hull_generator.calculateConvexHull(cluster_points, hull_points);
+        // std::cout << "Number of convex hull points: " << hull_points.size() << std::endl;
+
+        convex_hulls.emplace_back(std::move(hull_points));
     }
-    ConvexHullGenerator<float> convex_hull_generator{clustered_obstacle_points, true};
-    const std::vector<Point<float>> &convex_hull_points = convex_hull_generator.getConvexHull();
-    // std::cout << "Number of convex hull points: " << convex_hull_points.size() << std::endl;
 
     const auto &convex_polygon_simplification_end_time = std::chrono::high_resolution_clock::now();
     std::cout << "Convex polygon simplification time: "
@@ -155,6 +167,13 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     }
 
     // Convert to ROS2 format and publish (obstacle clustering - polygonization)
+    if (!convex_hulls.empty())
+    {
+        std::unique_ptr<MarkerArray> output_convex_polygonization_message = std::make_unique<MarkerArray>();
+        convertPointXYZTypeToMarkerArray(convex_hulls, input_message.header.frame_id, input_message.header.stamp,
+                                         *output_convex_polygonization_message);
+        publisher_obstacle_convex_hulls_->publish(*output_convex_polygonization_message);
+    }
 }
 } // namespace lidar_processing
 

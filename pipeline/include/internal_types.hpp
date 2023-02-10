@@ -5,10 +5,26 @@
 
 template <typename T> struct Point
 {
-    explicit Point(T x, T y, const std::size_t &index) : x(x), y(y), index(index){};
+    // Explicit constructor
+    explicit Point(const T &x, const T &y, const std::size_t &index) : x(x), y(y), index(index){};
 
-    ~Point() = default;
+    // Default destructor
+    virtual ~Point() = default;
 
+    // Copy constructor
+    Point(const Point &other) = default;
+
+    // Copy assignment operator
+    Point &operator=(const Point &rhs) = default;
+
+    // Move constructor
+    Point(Point &&) = default;
+
+    // Move assignment operator
+    Point &operator=(Point &&other) = default;
+
+    // Operator that returns result of comparison of two points
+    // without taking index into consideration
     friend bool operator==(const Point<T> &lhs, const Point<T> &rhs)
     {
         return (lhs.x == rhs.x && lhs.y == rhs.y);

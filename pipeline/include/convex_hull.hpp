@@ -107,7 +107,25 @@ template <typename T> class ConvexHullGenerator
         }
     };
 
+    explicit ConvexHullGenerator(bool should_close_the_graph = true)
+        : should_close_the_graph_(should_close_the_graph){};
+
     ~ConvexHullGenerator() = default;
+
+    void calculateConvexHull(const std::vector<Point<T>> &points, std::vector<Point<T>> &hull_points)
+    {
+        hull_points.clear();
+        if (points.empty())
+        {
+            return;
+        }
+        points_.clear();
+        points_.reserve(points.size());
+        std::copy(points.begin(), points.end(), std::back_insert_iterator(points_));
+        convex_hull_points_.clear();
+        calculateConvexHull();
+        std::copy(convex_hull_points_.begin(), convex_hull_points_.end(), std::back_insert_iterator(hull_points));
+    }
 
     // Caution, return by const ref!
     const std::vector<Point<T>> &getConvexHull() const
