@@ -2,13 +2,6 @@
 
 namespace lidar_processing
 {
-// constructor
-ConvexHull::ConvexHull(std::deque<point_t> points, bool should_close_the_graph)
-    : points_(points), count_of_point_(points.size()), should_close_the_graph_(should_close_the_graph)
-{
-    this->calculateConvexHull();
-}
-
 // construct convex hull
 void ConvexHull::calculateConvexHull()
 {
@@ -19,7 +12,7 @@ void ConvexHull::calculateConvexHull()
     }
 
     // find quadrant limits (maximum x and y)
-    std::deque<point_t>::iterator points_iterator = points_.begin();
+    auto points_iterator = points_.begin();
     point_t q1_p1 = *points_iterator;
     point_t q1_p2 = *points_iterator;
     point_t q2_p1 = *points_iterator;
@@ -568,22 +561,22 @@ void ConvexHull::removeRange(std::deque<point_t> &p_point, int index_start, int 
     count -= (index_end - index_start + 1);
 }
 
-std::deque<point_t> ConvexHull::getResultAsArray(int &hull_point_count)
+void ConvexHull::getConvexHull(std::vector<point_t> &hull_points)
 {
-    hull_point_count = 0;
+    hull_points.clear();
     if (this->count_of_point_ == 0)
     {
-        return {};
+        return;
     }
 
-    unsigned int index_q1_start;
-    unsigned int index_q2_start;
-    int index_q3_start;
-    int index_q4_start;
-    int index_q1_end;
-    int index_q2_end;
-    int index_q3_end;
-    int index_q4_end;
+    unsigned int index_q1_start = 0;
+    unsigned int index_q2_start = 0;
+    int index_q3_start = 0;
+    int index_q4_start = 0;
+    int index_q1_end = 0;
+    int index_q2_end = 0;
+    int index_q3_end = 0;
+    int index_q4_end = 0;
 
     index_q1_start = 0;
     index_q1_end = q1_hull_count_ - 1;
@@ -676,7 +669,7 @@ std::deque<point_t> ConvexHull::getResultAsArray(int &hull_point_count)
 
     if (comparePoints(q1p_hull_points_[index_q1_start], point_last))
     {
-        index_q1_start++;
+        ++index_q1_start;
     }
 
     int count_of_final_hull_point = (index_q1_end - index_q1_start) + (index_q2_end - index_q2_start) +
@@ -685,7 +678,8 @@ std::deque<point_t> ConvexHull::getResultAsArray(int &hull_point_count)
     if (count_of_final_hull_point <=
         1) // Case where there is only one point or many of only the same point. Auto closed if required.
     {
-        return {point_last};
+        hull_points = {point_last};
+        return;
     }
 
     if (count_of_final_hull_point > 1 && should_close_the_graph_)
@@ -693,42 +687,38 @@ std::deque<point_t> ConvexHull::getResultAsArray(int &hull_point_count)
         count_of_final_hull_point++;
     }
 
-    std::deque<point_t> results(count_of_final_hull_point);
+    hull_points.resize(count_of_final_hull_point);
 
-    int resIndex = 0;
+    int res_index = 0;
 
-    for (int n = index_q1_start; n <= index_q1_end; n++)
+    for (int n = index_q1_start; n <= index_q1_end; ++n)
     {
-        results[resIndex] = q1p_hull_points_[n];
-        resIndex++;
+        hull_points[res_index] = q1p_hull_points_[n];
+        res_index++;
     }
 
-    for (int n = index_q2_start; n <= index_q2_end; n++)
+    for (int n = index_q2_start; n <= index_q2_end; ++n)
     {
-        results[resIndex] = q2p_hull_points_[n];
-        resIndex++;
+        hull_points[res_index] = q2p_hull_points_[n];
+        res_index++;
     }
 
-    for (int n = index_q3_start; n <= index_q3_end; n++)
+    for (int n = index_q3_start; n <= index_q3_end; ++n)
     {
-        results[resIndex] = q3p_hull_points_[n];
-        resIndex++;
+        hull_points[res_index] = q3p_hull_points_[n];
+        res_index++;
     }
 
-    for (int n = index_q4_start; n <= index_q4_end; n++)
+    for (int n = index_q4_start; n <= index_q4_end; ++n)
     {
-        results[resIndex] = q4p_hull_points_[n];
-        resIndex++;
+        hull_points[res_index] = q4p_hull_points_[n];
+        res_index++;
     }
 
     if (count_of_final_hull_point > 1 && should_close_the_graph_)
     {
-        results[resIndex] = results[0];
+        hull_points[res_index] = hull_points[0];
     }
-
-    hull_point_count = count_of_final_hull_point;
-
-    return results;
 }
 
 } // namespace lidar_processing

@@ -1,5 +1,11 @@
 # LiDAR-Processing
-Lidar processing pipeline based on ROS2 Humble
+Lidar processing pipeline based on ROS2 Humble that consists of:
+* Reading point cloud data from `data/` folder and publishing on `pointcloud` topic at some predefined constant frequency
+* Subscribing on `pointcloud` topic and performing several processing steps, such as 
+    * Ground segmentation
+    * Obstacle clustering
+    * Obstacle cluster simplification
+* Processing node publishes visualisable results on `ground_pointcloud`, `obstacle_pointcloud` and `convex_polygonization` topics.
 
 ### Build
 ```
@@ -9,21 +15,23 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 cmake --build . --target all --config Release
 ```
 
-### Launch Nodes
-Inside of `/build` folder:
+### Build and Launch Nodes
 ```
-./data_reader_node
-./ground_segmentation_node
-./obstacle_clustering_node
+./launch.sh
 ```
 
 ### Launch Visualiser
-Inside of main folder:
 ```
-rviz2 -d config/pointcloud.rviz
+rviz2 -d rviz2_config/rviz2_config.rviz 
 ```
-### Processing Examples
+### Point Cloud Colored by Intensity
 ![image1](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/cloud_capture.png)
+
+### Ground Segmentation
 ![image2](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/ground_segmentation.png)
+
+### Obstacle Point Cloud Clusters
 ![image3](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/euclidean_clustering.png)
+
+### Convex Simplification of Obstacle Point Cloud Clusters
 ![image4](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/polygonization.png)
