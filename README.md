@@ -24,8 +24,14 @@ cmake --build . --target all --config Release
 ```
 rviz2 -d rviz2_config/rviz2_config.rviz 
 ```
-### Processing Examples
+### Raw PointCloud Colored by Intensity
 ![image1](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/cloud_capture.png)
+
+### Ground Segmentation
 ![image2](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/ground_segmentation.png)
+
+### Obstacle Point Cloud Clusters
 ![image3](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/euclidean_clustering.png)
+
+### Convex Simplification of Obstacle Point Cloud Clusters
 ![image4](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/polygonization.png)
