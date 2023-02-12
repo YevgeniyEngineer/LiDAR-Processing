@@ -2,13 +2,6 @@
 
 namespace lidar_processing
 {
-// constructor
-ConvexHull::ConvexHull(const std::vector<point_t> &points, bool should_close_the_graph)
-    : points_(points), count_of_point_(points.size()), should_close_the_graph_(should_close_the_graph)
-{
-    this->calculateConvexHull();
-}
-
 // construct convex hull
 void ConvexHull::calculateConvexHull()
 {
@@ -576,14 +569,14 @@ void ConvexHull::getConvexHull(std::vector<point_t> &hull_points)
         return;
     }
 
-    unsigned int index_q1_start;
-    unsigned int index_q2_start;
-    int index_q3_start;
-    int index_q4_start;
-    int index_q1_end;
-    int index_q2_end;
-    int index_q3_end;
-    int index_q4_end;
+    unsigned int index_q1_start = 0;
+    unsigned int index_q2_start = 0;
+    int index_q3_start = 0;
+    int index_q4_start = 0;
+    int index_q1_end = 0;
+    int index_q2_end = 0;
+    int index_q3_end = 0;
+    int index_q4_end = 0;
 
     index_q1_start = 0;
     index_q1_end = q1_hull_count_ - 1;
@@ -676,7 +669,7 @@ void ConvexHull::getConvexHull(std::vector<point_t> &hull_points)
 
     if (comparePoints(q1p_hull_points_[index_q1_start], point_last))
     {
-        index_q1_start++;
+        ++index_q1_start;
     }
 
     int count_of_final_hull_point = (index_q1_end - index_q1_start) + (index_q2_end - index_q2_start) +
@@ -696,35 +689,35 @@ void ConvexHull::getConvexHull(std::vector<point_t> &hull_points)
 
     hull_points.resize(count_of_final_hull_point);
 
-    int resIndex = 0;
+    int res_index = 0;
 
-    for (int n = index_q1_start; n <= index_q1_end; n++)
+    for (int n = index_q1_start; n <= index_q1_end; ++n)
     {
-        hull_points[resIndex] = q1p_hull_points_[n];
-        resIndex++;
+        hull_points[res_index] = q1p_hull_points_[n];
+        res_index++;
     }
 
-    for (int n = index_q2_start; n <= index_q2_end; n++)
+    for (int n = index_q2_start; n <= index_q2_end; ++n)
     {
-        hull_points[resIndex] = q2p_hull_points_[n];
-        resIndex++;
+        hull_points[res_index] = q2p_hull_points_[n];
+        res_index++;
     }
 
-    for (int n = index_q3_start; n <= index_q3_end; n++)
+    for (int n = index_q3_start; n <= index_q3_end; ++n)
     {
-        hull_points[resIndex] = q3p_hull_points_[n];
-        resIndex++;
+        hull_points[res_index] = q3p_hull_points_[n];
+        res_index++;
     }
 
-    for (int n = index_q4_start; n <= index_q4_end; n++)
+    for (int n = index_q4_start; n <= index_q4_end; ++n)
     {
-        hull_points[resIndex] = q4p_hull_points_[n];
-        resIndex++;
+        hull_points[res_index] = q4p_hull_points_[n];
+        res_index++;
     }
 
     if (count_of_final_hull_point > 1 && should_close_the_graph_)
     {
-        hull_points[resIndex] = hull_points[0];
+        hull_points[res_index] = hull_points[0];
     }
 }
 

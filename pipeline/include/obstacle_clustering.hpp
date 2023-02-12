@@ -15,11 +15,7 @@
 #include <random>
 #include <vector>
 
-// Eigen
-#include <eigen3/Eigen/Dense>
-
 // PCL
-#include <pcl/common/centroid.h>
 #include <pcl/common/io.h>
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/kdtree/kdtree_flann.h>
@@ -76,6 +72,7 @@ void ObstacleClusterer::clusterObstacles(const pcl::PointCloud<PointT> &cloud,
 
     // Perform clustering and store cluster indices
     pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree = std::make_shared<pcl::search::KdTree<pcl::PointXYZ>>();
+
     std::vector<pcl::PointIndices> cluster_indices;
     FastEuclideanClustering<pcl::PointXYZ> fast_euclidean_clustering;
     fast_euclidean_clustering.setInputCloud(input_cloud);

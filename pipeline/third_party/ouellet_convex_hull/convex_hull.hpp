@@ -30,14 +30,17 @@ typedef struct
 class ConvexHull
 {
   public:
-    explicit ConvexHull(const std::vector<point_t> &points, bool should_close_the_graph = true);
+    explicit ConvexHull(const std::vector<point_t> &points, bool should_close_the_graph = true)
+        : points_(points), count_of_point_(points.size()), should_close_the_graph_(should_close_the_graph)
+    {
+        this->calculateConvexHull();
+    };
+
     ~ConvexHull() = default;
+
     void getConvexHull(std::vector<point_t> &hull_points);
 
   private:
-    static const int quadrant_hull_point_array_initial_capacity_ = 1000;
-    static const int quadrant_hull_point_array_grow_size_ = 1000;
-
     std::vector<point_t> points_;
     int count_of_point_;
     bool should_close_the_graph_;

@@ -3,6 +3,7 @@
 #include "convex_hull.hpp"
 #include "ground_segmentation.hpp"
 #include "obstacle_clustering.hpp"
+#include "obstacle_simplification.hpp"
 
 // STL
 #include <chrono>
@@ -85,15 +86,18 @@ void ProcessingNode::process(const PointCloud2 &input_message)
 
     std::unique_ptr<pcl::PointCloud<pcl::PointXYZRGBL>> ground_cloud =
         std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
+
     std::unique_ptr<pcl::PointCloud<pcl::PointXYZRGBL>> obstacle_cloud =
         std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
+
     ground_segmenter->segmentGround(*point_cloud, *ground_cloud, *obstacle_cloud);
 
     const auto &ground_segmentation_end_time = std::chrono::high_resolution_clock::now();
     std::cout << "Ground segmentation time: "
               << (ground_segmentation_end_time - ground_segmentation_start_time).count() / 1e9 << std::endl;
 
-    std::cout << "Ground Pts: " << ground_cloud->size() << " | Obstacle Pts: " << obstacle_cloud->size() << std::endl;
+    // std::cout << "Ground Pts: " << ground_cloud->size() << " | Obstacle Pts: " << obstacle_cloud->size() <<
+    // std::endl;
 
     // Obstacle clustering
     const auto &obstacle_clustering_start_time = std::chrono::high_resolution_clock::now();
@@ -110,38 +114,8 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     // Polygonization
     const auto &convex_polygon_simplification_start_time = std::chrono::high_resolution_clock::now();
 
-    // Convert 3D to 2D
     std::vector<std::vector<point_t>> convex_hulls;
-    convex_hulls.reserve(clustered_obstacle_cloud.size());
-
-    for (int cluster_no = 0; cluster_no < clustered_obstacle_cloud.size(); ++cluster_no)
-    {
-        const auto &cluster = clustered_obstacle_cloud[cluster_no];
-        std::size_t cluster_point_no = 0;
-        std::vector<point_t> cluster_points;
-        cluster_points.reserve(cluster.points.size());
-        for (const auto &point : cluster.points)
-        {
-            point_t point_cache;
-            point_cache.x = point.x;
-            point_cache.y = point.y;
-            point_cache.index = cluster_point_no;
-            cluster_points.push_back(std::move(point_cache));
-            ++cluster_point_no;
-        }
-
-        ConvexHull convex_hull_generator(cluster_points);
-        std::vector<point_t> hull_points;
-        convex_hull_generator.getConvexHull(hull_points);
-
-        // std::cout << "Number of convex hull points: " << hull_points.size() << std::endl;
-        // for (const auto &point : hull_points)
-        // {
-        //     std::cout << "(" << point.x << ", " << point.y << ")\n";
-        // }
-
-        convex_hulls.emplace_back(std::move(hull_points));
-    }
+    findOrderedConvexOutline(clustered_obstacle_cloud, convex_hulls);
 
     const auto &convex_polygon_simplification_end_time = std::chrono::high_resolution_clock::now();
     std::cout << "Convex polygon simplification time: "

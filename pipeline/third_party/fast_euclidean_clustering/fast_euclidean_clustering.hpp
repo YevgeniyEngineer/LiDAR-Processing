@@ -219,7 +219,7 @@ template <typename PointT> class FastEuclideanClustering : public pcl::PCLBase<P
             {
                 if (read != write)
                 {
-                    *write = std::move(*read);
+                    *write = *read;
                 }
                 ++write;
             }
