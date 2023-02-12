@@ -9,7 +9,7 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 cmake --build . --target all --config Release
 ```
 
-### Launch Nodes
+### Build and Launch Nodes
 ```
 ./launch.sh
 ```
