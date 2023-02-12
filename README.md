@@ -15,7 +15,6 @@ cmake --build . --target all --config Release
 ```
 
 ### Launch Visualiser
-Inside of main folder:
 ```
 rviz2 -d rviz2_config/rviz2_config.rviz 
 ```
