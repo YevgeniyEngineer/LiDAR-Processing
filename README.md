@@ -24,7 +24,7 @@ cmake --build . --target all --config Release
 ```
 rviz2 -d rviz2_config/rviz2_config.rviz 
 ```
-### Raw PointCloud Colored by Intensity
+### Raw Point Cloud Colored by Intensity
 ![image1](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/cloud_capture.png)
 
 ### Ground Segmentation
