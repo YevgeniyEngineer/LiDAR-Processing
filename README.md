@@ -12,15 +12,13 @@ cmake --build . --target all --config Release
 ### Launch Nodes
 Inside of `/build` folder:
 ```
-./data_reader_node
-./ground_segmentation_node
-./obstacle_clustering_node
+./launch.sh
 ```
 
 ### Launch Visualiser
 Inside of main folder:
 ```
-rviz2 -d config/pointcloud.rviz
+rviz2 -d rviz2_config/rviz2_config.rviz 
 ```
 ### Processing Examples
 ![image1](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/cloud_capture.png)
