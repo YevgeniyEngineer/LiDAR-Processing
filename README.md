@@ -10,7 +10,6 @@ cmake --build . --target all --config Release
 ```
 
 ### Launch Nodes
-Inside of `/build` folder:
 ```
 ./launch.sh
 ```
