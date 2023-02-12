@@ -2,7 +2,7 @@
 #define OBSTACLE_CLUSTERING_HPP_
 
 // Required libraries
-#include "euclidean_clustering.hpp"
+#include "fast_euclidean_clustering.hpp"
 
 // std
 #include <algorithm>
@@ -56,7 +56,7 @@ class ObstacleClusterer : public pcl::PCLBase<pcl::PointXYZ>
 // Perform clustering on point cloud, thus forming cluster groups
 // These cluster groups can represent individual object in the scene
 template <typename PointT>
-void ObstacleClusterer::clusterObstacles(const typename pcl::PointCloud<PointT> &cloud,
+void ObstacleClusterer::clusterObstacles(const pcl::PointCloud<PointT> &cloud,
                                          std::vector<pcl::PointCloud<pcl::PointXYZ>> &clustered_cloud)
 {
     if (cloud.empty())
@@ -64,48 +64,42 @@ void ObstacleClusterer::clusterObstacles(const typename pcl::PointCloud<PointT> 
         return;
     }
 
-    const auto &number_of_points = cloud.size();
-
-    // Copy cloud into PointXYZ for faster processing
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_xyz = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-    for (const auto point : cloud.points)
+    // Prepare points for clustering
+    pcl::PointCloud<pcl::PointXYZ>::Ptr input_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+    input_cloud->points.reserve(cloud.size());
+    for (const auto &point : cloud.points)
     {
-        pcl::PointXYZ point_cache{point.x, point.y, point.z};
-        cloud_xyz->points.emplace_back(std::move(point_cache));
+        input_cloud->points.emplace_back(point.x, point.y, point.z);
     }
-    cloud_xyz->height = 1;
-    cloud_xyz->width = cloud_xyz->points.size();
+    input_cloud->height = 1;
+    input_cloud->width = input_cloud->points.size();
 
+    // Perform clustering and store cluster indices
     pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree = std::make_shared<pcl::search::KdTree<pcl::PointXYZ>>();
     std::vector<pcl::PointIndices> cluster_indices;
-
     FastEuclideanClustering<pcl::PointXYZ> fast_euclidean_clustering;
-    fast_euclidean_clustering.setInputCloud(cloud_xyz);
+    fast_euclidean_clustering.setInputCloud(input_cloud);
     fast_euclidean_clustering.setSearchMethod(kdtree);
     fast_euclidean_clustering.setClusterTolerance(neighbour_radius_threshold_);
     fast_euclidean_clustering.setQuality(cluster_quality_);
     fast_euclidean_clustering.setMinClusterSize(min_cluster_size_);
     fast_euclidean_clustering.segment(cluster_indices);
 
-    // std::cout << "#clusters: " << cluster_indices.size() << std::endl;
-
-    int cluster_no = 0;
+    // Copy clustered points
     clustered_cloud.clear();
     clustered_cloud.reserve(cluster_indices.size());
-    for (const auto &cluster : cluster_indices)
+    for (const auto &cluster_index_list : cluster_indices)
     {
-        // std::cout << "#points cluster: " << cluster.indices.size() << std::endl;
         pcl::PointCloud<pcl::PointXYZ> cluster_points;
-        cluster_points.reserve(cluster.indices.size());
-        for (const auto &index : cluster.indices)
+        cluster_points.reserve(cluster_index_list.indices.size());
+        for (const auto &index : cluster_index_list.indices)
         {
-            const auto &point_xyz = cloud_xyz->points[index];
+            const pcl::PointXYZ &point_xyz = input_cloud->points[index];
             cluster_points.emplace_back(point_xyz.x, point_xyz.y, point_xyz.z);
         }
         cluster_points.height = 1;
         cluster_points.width = cluster_points.points.size();
-        clustered_cloud.emplace_back(cluster_points);
-        ++cluster_no;
+        clustered_cloud.emplace_back(std::move(cluster_points));
     }
 }
 

@@ -20,8 +20,9 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef FAST_EUCLIDEAN_CLUSTERING
-#define FAST_EUCLIDEAN_CLUSTERING
+#pragma once
+#ifndef FAST_EUCLIDEAN_CLUSTERING_HPP_
+#define FAST_EUCLIDEAN_CLUSTERING_HPP_
 
 #include <pcl/pcl_base.h>
 #include <pcl/search/kdtree.h>
@@ -39,8 +40,6 @@
 #include <utility>
 #include <vector>
 
-namespace lidar_processing
-{
 template <typename PointT> class FastEuclideanClustering : public pcl::PCLBase<PointT>
 {
     using Base = pcl::PCLBase<PointT>;
@@ -141,70 +140,74 @@ template <typename PointT> class FastEuclideanClustering : public pcl::PCLBase<P
 
         Graph g;
         std::queue<pcl::index_t> queue;
-        pcl::index_t label = 0;
-        for (auto index : *indices_)
+
         {
-            if (removed[index])
+            pcl::index_t label = 0;
+            for (auto index : *indices_)
             {
-                continue;
-            }
-
-            boost::add_edge(label, label, g);
-
-            queue.push(index);
-            while (!queue.empty())
-            {
-                auto p = queue.front();
-                queue.pop();
-                if (removed[p])
+                if (removed[index])
                 {
                     continue;
                 }
 
-                tree_->radiusSearch(p, cluster_tolerance_, nn_indices, nn_distances);
+                boost::add_edge(label, label, g);
 
-                for (std::size_t i = 0; i < nn_indices.size(); ++i)
+                queue.push(index);
+                while (!queue.empty())
                 {
-                    auto q = nn_indices[i];
-                    const auto &q_label = labels[q];
-
-                    if (q_label != pcl::UNAVAILABLE && q_label != label)
-                    {
-                        boost::add_edge(label, q_label, g);
-                    }
-
-                    if (removed[q])
+                    auto p = queue.front();
+                    queue.pop();
+                    if (removed[p])
                     {
                         continue;
                     }
 
-                    labels[q] = label;
+                    tree_->radiusSearch(p, cluster_tolerance_, nn_indices, nn_distances);
 
-                    // Must be <= to remove self (p).
-                    if (nn_distances[i] <= nn_distance_threshold)
+                    for (std::size_t i = 0; i < nn_indices.size(); ++i)
                     {
-                        removed[q] = true;
-                    }
-                    else
-                    {
-                        queue.push(q);
+                        auto q = nn_indices[i];
+                        auto q_label = labels[q];
+
+                        if (q_label != pcl::UNAVAILABLE && q_label != label)
+                        {
+                            boost::add_edge(label, q_label, g);
+                        }
+
+                        if (removed[q])
+                        {
+                            continue;
+                        }
+
+                        labels[q] = label;
+
+                        // Must be <= to remove self (p).
+                        if (nn_distances[i] <= nn_distance_threshold)
+                        {
+                            removed[q] = true;
+                        }
+                        else
+                        {
+                            queue.push(q);
+                        }
                     }
                 }
+
+                ++label;
             }
-            ++label;
         }
 
         // Merge labels.
-        std::vector<pcl::index_t> label_map(boost::num_vertices(g));
 
-        const auto &num_components = boost::connected_components(g, label_map.data());
+        std::vector<pcl::index_t> label_map(boost::num_vertices(g));
+        auto num_components = boost::connected_components(g, label_map.data());
         clusters.resize(num_components);
 
         for (auto index : *indices_)
         {
-            const auto &label = labels[index];
-            const auto &new_label = label_map[label];
-            clusters[new_label].indices.emplace_back(index);
+            auto label = labels[index];
+            auto new_label = label_map[label];
+            clusters[new_label].indices.push_back(index);
         }
 
         // Remove small clusters.
@@ -233,6 +236,5 @@ template <typename PointT> class FastEuclideanClustering : public pcl::PCLBase<P
     double quality_;
     KdTreePtr tree_;
 };
-} // namespace lidar_processing
 
-#endif // FAST_EUCLIDEAN_CLUSTERING
+#endif // FAST_EUCLIDEAN_CLUSTERING_HPP_

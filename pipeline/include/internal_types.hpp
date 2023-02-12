@@ -6,7 +6,10 @@
 template <typename T> struct Point
 {
     // Explicit constructor
-    explicit Point(const T &x, const T &y, const std::size_t &index) : x(x), y(y), index(index){};
+    explicit Point(const T x, const T y, const std::size_t index) : x(x), y(y), index(index){};
+
+    // Default constructor
+    Point() = default;
 
     // Default destructor
     virtual ~Point() = default;
@@ -30,9 +33,9 @@ template <typename T> struct Point
         return (lhs.x == rhs.x && lhs.y == rhs.y);
     }
 
-    T x = 0;
-    T y = 0;
-    std::size_t index = 0;
+    T x;
+    T y;
+    std::size_t index;
 };
 
 template <typename T> struct Quadrant

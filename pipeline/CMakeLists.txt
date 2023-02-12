@@ -1,3 +1,6 @@
+# cmake -DCMAKE_BUILD_TYPE=Release .. 
+# cmake --build . --target all --config Release
+
 cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 
 project(lidar_processing_pipeline)
@@ -13,6 +16,7 @@ find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(builtin_interfaces REQUIRED)
 
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
@@ -32,20 +36,25 @@ target_link_libraries(data_reader_node
 )
 
 # build rules for executable "processing_node"
-add_executable(processing_node 
+add_executable(processing_node
     src/processing_node.cpp
+    third_party/ouellet_convex_hull/convex_hull.cpp
 )
 target_include_directories(processing_node
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
+    PRIVATE
         ${rclcpp_INCLUDE_DIRS}
+        third_party/fast_euclidean_clustering
+        third_party/ouellet_convex_hull
 )
 ament_target_dependencies(processing_node 
     rclcpp 
     sensor_msgs 
     geometry_msgs 
     visualization_msgs
+    builtin_interfaces
 )
 target_link_libraries(processing_node
     TBB::tbb
