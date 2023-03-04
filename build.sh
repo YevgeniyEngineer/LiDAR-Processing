@@ -5,12 +5,11 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 BUILD_DIR="${SCRIPT_DIR}/build"
 LAUCH_DIR="${BUILD_DIR}/lidar_processing_pipeline"
 
-# Launch
-cd "${LAUCH_DIR}"
-./data_reader_node &
-./processing_node &
+if [ ! -d "${BUILD_DIR}" ]; then
+    mkdir -p "${BUILD_DIR}"
+fi
 
-cd "${SCRIPT_DIR}"
-rviz2 -d "rviz2_config/rviz2_config.rviz" &
-
-wait
+# Build
+cd "${BUILD_DIR}"
+cmake -DCMAKE_BUILD_TYPE=Release .. 
+cmake --build . --target all --config Release
