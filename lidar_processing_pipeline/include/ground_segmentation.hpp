@@ -13,15 +13,12 @@
 #include <vector>
 
 // Eigen
-#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/SVD>
 
 // PCL
-#include <pcl/common/centroid.h>
-#include <pcl/common/io.h>
-#include <pcl/filters/extract_indices.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-#include <pcl/search/kdtree.h>
+#include <pcl/point_cloud.h> // pcl::PointCloud
+#include <pcl/point_types.h> // pcl::PointXYZ
 
 #define DEBUG 0
 
