@@ -38,7 +38,6 @@ target_link_libraries(data_reader_node
 # build rules for executable "processing_node"
 add_executable(processing_node
     src/processing_node.cpp
-    third_party/ouellet_convex_hull/convex_hull.cpp
     src/ground_segmentation.cpp
 )
 target_include_directories(processing_node
@@ -48,7 +47,6 @@ target_include_directories(processing_node
     PRIVATE
         ${rclcpp_INCLUDE_DIRS}
         third_party/fast_euclidean_clustering
-        third_party/ouellet_convex_hull
 )
 ament_target_dependencies(processing_node 
     rclcpp 

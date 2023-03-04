@@ -1,7 +1,7 @@
 // Processing
 #include "conversions.hpp"
-#include "convex_hull.hpp"
 #include "ground_segmentation.hpp"
+#include "internal_types.hpp"
 #include "obstacle_clustering.hpp"
 #include "obstacle_simplification.hpp"
 
@@ -114,7 +114,7 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     // Polygonization
     const auto &convex_polygon_simplification_start_time = std::chrono::high_resolution_clock::now();
 
-    std::vector<std::vector<point_t>> convex_hulls;
+    std::vector<std::vector<PointXY>> convex_hulls;
     findOrderedConvexOutline(clustered_obstacle_cloud, convex_hulls);
 
     const auto &convex_polygon_simplification_end_time = std::chrono::high_resolution_clock::now();
