@@ -3,12 +3,10 @@
 
 // STL
 #include <algorithm>
-#include <cassert>
 #include <cstdint>
 #include <execution>
 #include <memory>
 #include <numeric>
-#include <random>
 #include <stdexcept>
 #include <vector>
 
@@ -38,6 +36,11 @@ struct GroundPlane
     ~GroundPlane() = default;
 };
 
+/// @brief Find plane from provided ground points. Plane equation: ax + by + cz = d
+/// @param points_xyz Point cloud matrix
+/// @return Ground plane object containing plane coefficients (a, b, c, d)
+GroundPlane estimatePlane(const Eigen::MatrixXf &points_xyz);
+
 struct ColorRGB
 {
     float r;
@@ -51,6 +54,15 @@ struct ColorRGB
 class GroundSegmenter
 {
   public:
+    /// @brief Constructor of GroundSegmentation class
+    /// @param number_of_iterations Fixed number of iterations for convergence
+    /// @param number_of_planar_partitions Number of planar components to use for ground fitting
+    /// @param number_of_lowest_point_representative_estimators Number of sample points to take for initial ground fit
+    /// @param sensor_height Approximate height of a sensor
+    /// @param distance_threshold Maximum distance from fitted plane to consider points a ground
+    /// @param initial_seed_threshold Filter points that have height less than the height of the lowest point
+    /// representative
+    /// + initial_seed_threshold
     GroundSegmenter(std::uint32_t number_of_iterations = 3, std::uint32_t number_of_planar_partitions = 1,
                     std::uint32_t number_of_lowest_point_representative_estimators = 400, float sensor_height = 1.73,
                     float distance_threshold = 0.3, float initial_seed_threshold = 0.6);
@@ -116,15 +128,29 @@ class GroundSegmenter
     }
 
   private:
+    /// @brief Partitions space into multiple planar components
+    /// @param cloud Input point cloud to be split into multiple planes
+    /// @param cloud_segments Vector of point cloud components
     void formPlanarPartitions(const pcl::PointCloud<pcl::PointXYZ> &cloud,
                               std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &cloud_segments);
 
+    /// @brief Initial estimation of ground points
+    /// @param cloud Input point cloud
+    /// @param indices Indices corresponding to ground plane points
     void extractInitialSeeds(const pcl::PointCloud<pcl::PointXYZ> &cloud, std::vector<int> &indices);
 
+    /// @brief Ground segmentation for a planar partition
+    /// @param cloud_segment Pointcloud partition extracted from formPlanarPartitions() method
+    /// @param ground_cloud_segment Ground cloud points for current partition
+    /// @param obstacle_cloud_segment Obstacle cloud points for current partition
     void fitGroundPlane(const pcl::PointCloud<pcl::PointXYZ> &cloud_segment,
                         pcl::PointCloud<pcl::PointXYZ> &ground_cloud_segment,
                         pcl::PointCloud<pcl::PointXYZ> &obstacle_cloud_segment);
 
+    /// @brief Combines ground of obstacle points from multiple partitions
+    /// @param cloud_segments Point cloud corresponding to either ground or obstacle cloud partition
+    /// @param segmentation_label Segmentation label to be assigned to this point cloud
+    /// @param segmented_cloud Output point cloud with segmentation labels
     void combineSegmentedPoints(const std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &cloud_segments,
                                 const SegmentationLabels &segmentation_label,
                                 pcl::PointCloud<pcl::PointXYZRGBL> &segmented_cloud) const;
@@ -138,6 +164,11 @@ class GroundSegmenter
     float initial_seed_threshold_;
 };
 
+/// @brief Performs ground segmentation on input cloud
+/// @tparam PointT Point type - struct containing x, y, z fields
+/// @param input_cloud Input point cloud
+/// @param ground_cloud Segmented ground point cloud
+/// @param obstacle_cloud Segmented obstacle point cloud
 template <typename PointT>
 void GroundSegmenter::segmentGround(const typename pcl::PointCloud<PointT> &input_cloud,
                                     pcl::PointCloud<pcl::PointXYZRGBL> &ground_cloud,

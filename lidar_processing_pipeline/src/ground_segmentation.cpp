@@ -2,14 +2,6 @@
 
 namespace lidar_processing
 {
-/// @brief Constructor of GroundSegmentation class
-/// @param number_of_iterations Fixed number of iterations for convergence
-/// @param number_of_planar_partitions Number of planar components to use for ground fitting
-/// @param number_of_lowest_point_representative_estimators Number of sample points to take for initial ground fit
-/// @param sensor_height Approximate height of a sensor
-/// @param distance_threshold Maximum distance from fitted plane to consider points a ground
-/// @param initial_seed_threshold Filter points that have height less than the height of the lowest point representative
-/// + initial_seed_threshold
 GroundSegmenter::GroundSegmenter(std::uint32_t number_of_iterations, std::uint32_t number_of_planar_partitions,
                                  std::uint32_t number_of_lowest_point_representative_estimators, float sensor_height,
                                  float distance_threshold, float initial_seed_threshold)
@@ -40,7 +32,6 @@ GroundSegmenter::GroundSegmenter(std::uint32_t number_of_iterations, std::uint32
     }
 }
 
-// partitions space into multiple planar components
 void GroundSegmenter::formPlanarPartitions(const pcl::PointCloud<pcl::PointXYZ> &cloud,
                                            std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &cloud_segments)
 {
@@ -95,8 +86,6 @@ void GroundSegmenter::formPlanarPartitions(const pcl::PointCloud<pcl::PointXYZ> 
     }
 }
 
-// Find plane from provided ground points.
-// Plane equation: ax + by + cz = d
 GroundPlane estimatePlane(const Eigen::MatrixXf &points_xyz)
 {
     const auto number_of_points = points_xyz.rows();
@@ -134,7 +123,6 @@ GroundPlane estimatePlane(const Eigen::MatrixXf &points_xyz)
     return GroundPlane(a, b, c, d);
 }
 
-// initial estimation of ground points
 void GroundSegmenter::extractInitialSeeds(const pcl::PointCloud<pcl::PointXYZ> &cloud, std::vector<int> &indices)
 {
     if (cloud.empty())
@@ -206,7 +194,6 @@ void GroundSegmenter::extractInitialSeeds(const pcl::PointCloud<pcl::PointXYZ> &
 #endif
 }
 
-// Ground segmentation for a planar partition
 void GroundSegmenter::fitGroundPlane(const pcl::PointCloud<pcl::PointXYZ> &cloud_segment,
                                      pcl::PointCloud<pcl::PointXYZ> &ground_cloud_segment,
                                      pcl::PointCloud<pcl::PointXYZ> &obstacle_cloud_segment)
