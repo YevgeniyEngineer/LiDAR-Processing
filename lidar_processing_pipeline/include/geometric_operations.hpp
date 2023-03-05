@@ -78,7 +78,10 @@ inline static void constructGrahamAndrewConvexHull(std::vector<PointT> points, s
     hull.resize(k - 1 - (hull[0] == hull[1]));
 }
 
-// Gift wrapping algorithm to compute the convex hull of a set of points
+/// @brief Gift wrapping algorithm to compute the convex hull of a set of points
+/// @tparam PointT 2D point containing x, y coordinates
+/// @param points An array of 2D points
+/// @param hull Convex hull
 template <typename PointT>
 inline static void constructJarvisMarchConvexHull(const std::vector<PointT> &points, std::vector<PointT> &hull) noexcept
 {
@@ -135,6 +138,10 @@ inline static void constructJarvisMarchConvexHull(const std::vector<PointT> &poi
     } while (p != leftmost); // While we don't come to first point
 }
 
+/// @brief Construct convex hull using Chan's algorithm
+/// @tparam PointT 2D point containing x, y coordinates
+/// @param points An array of 2D points
+/// @param hull Convex hull
 template <typename PointT>
 inline static void constructChanConvexHull(std::vector<PointT> points, std::vector<PointT> &hull) noexcept
 {
