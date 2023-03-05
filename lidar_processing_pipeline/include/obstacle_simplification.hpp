@@ -43,7 +43,12 @@ inline void findOrderedConvexOutline(const std::vector<pcl::PointCloud<pcl::Poin
             constructGrahamAndrewConvexHull(std::move(cluster_points), hull_points);
         }
 
-        convex_hulls.emplace_back(std::move(hull_points));
+        // Close the hull
+        if (!hull_points.empty())
+        {
+            hull_points.emplace_back(hull_points[0]);
+            convex_hulls.emplace_back(std::move(hull_points));
+        }
     }
 }
 } // namespace lidar_processing
