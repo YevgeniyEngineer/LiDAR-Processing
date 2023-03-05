@@ -96,6 +96,7 @@ void ObstacleClusterer::clusterObstacles(const pcl::PointCloud<PointT> &cloud,
         }
         cluster_points.height = 1;
         cluster_points.width = cluster_points.points.size();
+
         clustered_cloud.emplace_back(std::move(cluster_points));
     }
 }

@@ -34,7 +34,15 @@ inline void findOrderedConvexOutline(const std::vector<pcl::PointCloud<pcl::Poin
         }
 
         std::vector<PointXY> hull_points;
-        constructGrahamAndrewConvexHull(cluster_points, hull_points);
+        if (cluster_points.size() > 200)
+        {
+            constructChanConvexHull(std::move(cluster_points), hull_points);
+        }
+        else
+        {
+            constructGrahamAndrewConvexHull(std::move(cluster_points), hull_points);
+        }
+
         convex_hulls.emplace_back(std::move(hull_points));
     }
 }
