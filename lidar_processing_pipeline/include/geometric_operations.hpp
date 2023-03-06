@@ -4,6 +4,7 @@
 #include <algorithm> // std::sort
 #include <execution> // std::execution
 #include <iterator>  // std::back_insert_iterator
+#include <limits>    // std::numeric_limits
 #include <utility>   // std::move
 #include <vector>    // std::vector
 
@@ -215,6 +216,37 @@ inline static void constructChanConvexHull(std::vector<PointT> points, std::vect
     // Merge convex hulls using Jarvis March
     constructJarvisMarchConvexHull(merged_points, hull);
 }
+
+template <typename PointT>
+inline static bool isInsidePolygon(const PointT &point, const std::vector<PointT> &polygon) noexcept
+{
+    const int number_of_polygon_vertices = static_cast<int>(polygon.size());
+    if (number_of_polygon_vertices < 3)
+    {
+        return false;
+    }
+    bool is_inside = false;
+    for (int i = 0; i < number_of_polygon_vertices - 1; ++i)
+    {
+        const auto &point_1 = polygon[i];
+        const auto &point_2 = polygon[i + 1];
+        if (((point.y < point_1.y) != (point.y < point_2.y)) &&
+            ((point.x < (point_2.x - point_1.x) * (point.y - point_1.y) /
+                                (point_2.y - point_1.y + std::numeric_limits<float>::epsilon()) +
+                            point_1.x)))
+        {
+            is_inside = !is_inside;
+        }
+    }
+    return is_inside;
+}
+
+template <typename PointT>
+inline static double distanceBetweenConvexPolygons(const std::vector<PointT> &polygon_1,
+                                                   const std::vector<PointT> &polygon_2)
+{
+}
+
 } // namespace lidar_processing
 
 #endif // GEOMETRIC_OPERATIONS

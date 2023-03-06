@@ -2,6 +2,8 @@
 #define INTERNAL_TYPES
 
 #include <cmath>
+#include <limits>
+#include <vector>
 
 namespace lidar_processing
 {
@@ -123,6 +125,109 @@ inline static float distance(const PointXYZ &lhs, const PointXYZ &rhs) noexcept
 {
     return std::sqrt(distanceSquared(lhs, rhs));
 }
+
+// A vertex in 2D space
+struct Vec2
+{
+    float x, y;
+    Vec2() : x(0), y(0){};
+    constexpr Vec2(float x, float y) : x(x), y(y){};
+
+    Vec2 operator+(const Vec2 &rhs) const noexcept
+    {
+        return Vec2(x + rhs.x, y + rhs.y);
+    }
+
+    Vec2 operator-(const Vec2 &rhs) const noexcept
+    {
+        return Vec2(x - rhs.x, y - rhs.y);
+    }
+
+    Vec2 operator+(float num) const noexcept
+    {
+        return Vec2(x + num, y + num);
+    }
+
+    Vec2 operator-(float num) const noexcept
+    {
+        return Vec2(x - num, y - num);
+    }
+
+    Vec2 operator*(float num) const noexcept
+    {
+        return Vec2(x * num, y * num);
+    }
+
+    float dot(const Vec2 &rhs) const noexcept
+    {
+        return x * rhs.x + y * rhs.y;
+    }
+
+    float cross(const Vec2 &rhs) const noexcept
+    {
+        return x * rhs.y - y * rhs.x;
+    }
+
+    constexpr float mag2() const noexcept
+    {
+        return x * x + y * y;
+    }
+
+    constexpr float mag() const noexcept
+    {
+        return std::sqrt(mag2());
+    }
+
+    constexpr Vec2 normalized() const noexcept
+    {
+        float mag = std::sqrt(mag2());
+        if (mag < std::numeric_limits<float>::epsilon())
+        {
+            return Vec2(0, 0);
+        }
+        else
+        {
+            return Vec2(x / mag, y / mag);
+        }
+    }
+
+    constexpr Vec2 perp() const noexcept
+    {
+        return Vec2(-y, x);
+    }
+};
+
+// A line segment in 2D space
+struct Segment2
+{
+    Vec2 a, b;
+
+    Segment2(){};
+    constexpr Segment2(const Vec2 &a, const Vec2 &b) : a(a), b(b){};
+
+    constexpr Vec2 dir() const noexcept
+    {
+        return b - a;
+    }
+
+    constexpr Vec2 normal() const noexcept
+    {
+        return dir().perp().normalized();
+    }
+
+    float length() const noexcept
+    {
+        return dir().mag();
+    }
+
+    Vec2 closest_point(const Vec2 &p) const noexcept
+    {
+        Vec2 d = dir().normalized();
+        float t = (p - a).dot(d);
+        t = std::max(0.0f, std::min(t, length()));
+        return a + d * t;
+    }
+};
 
 } // namespace lidar_processing
 
