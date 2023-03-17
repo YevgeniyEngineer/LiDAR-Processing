@@ -165,7 +165,7 @@ template <typename T, std::size_t N> class StackVector final
     }
 
     /// @brief Add a value to the end of the StackVector.
-    /// @tparam ...Argument types forwarded to construct the new element.
+    /// @tparam ...Args Argument types forwarded to construct the new element.
     /// @param ...args Argument values forwarded to construct the new element.
     /// @throws std::overflow_error if the StackVector is full.
     template <typename... Args> void emplace_back(Args &&...args)
@@ -175,6 +175,40 @@ template <typename T, std::size_t N> class StackVector final
             throw std::overflow_error("StackVector is full");
         }
         data_[size_++] = T(std::forward<Args>(args)...);
+    }
+
+    /// @brief Construct and insert element at the specified position of the StackVector.
+    /// @tparam ...Args Argument types forwarded to construct the new element.
+    /// @param pos Random access iterator position that points to the insertion position in the StackVector.
+    /// @param ...args Argument values forwarded to construct the new element.
+    /// @return Updated Pointer to the StackVector data.
+    /// @throws std::out_of_range if either maximum size of the StackVector was exceeded or the invalid iterator
+    /// position was provided.
+    template <typename... Args> iterator emplace(iterator pos, Args &&...args)
+    {
+        if (size_ >= N)
+        {
+            throw std::out_of_range("StackVector maximum size exceeded");
+        }
+
+        if (pos < begin() || pos > end())
+        {
+            throw std::out_of_range("Invalid iterator position");
+        }
+
+        if (pos == end())
+        {
+            new (data_.data() + size_) T(std::forward<Args>(args)...);
+        }
+        else
+        {
+            T temp(std::forward<Args>(args)...);
+            std::move_backward(pos, end(), end() + 1);
+            *pos = std::move(temp);
+        }
+
+        ++size_;
+        return pos;
     }
 
     /// @brief Remove one element from the end of the StackVector.
@@ -355,6 +389,50 @@ template <typename T, std::size_t N> class StackVector final
     const_reverse_iterator crend() const noexcept
     {
         return const_reverse_iterator(begin());
+    }
+
+    /// @brief Returns the non-const reference to the first element in the StackVector.
+    /// @throws std::out_of_range if the StackVector is empty.
+    reference front()
+    {
+        if (empty())
+        {
+            throw std::out_of_range("StackVector is empty");
+        }
+        return data_[0];
+    }
+
+    /// @brief Returns the const reference to the first element in the StackVector.
+    /// @throws std::out_of_range if the StackVector is empty.
+    const_reference front() const
+    {
+        if (empty())
+        {
+            throw std::out_of_range("StackVector is empty");
+        }
+        return data_[0];
+    }
+
+    /// @brief Returns the non-const reference to the last element in the StackVector.
+    /// @throws std::out_of_range if the StackVector is empty.
+    reference back()
+    {
+        if (empty())
+        {
+            throw std::out_of_range("StackVector is empty");
+        }
+        return data_[size_ - 1];
+    }
+
+    /// @brief Returns the const reference to the last element in the StackVector.
+    /// @throws std::out_of_range if the StackVector is empty.
+    const_reference back() const
+    {
+        if (empty())
+        {
+            throw std::out_of_range("StackVector is empty");
+        }
+        return data_[size_ - 1];
     }
 
   private:
