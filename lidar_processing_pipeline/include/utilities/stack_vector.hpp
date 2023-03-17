@@ -19,9 +19,6 @@ namespace lidar_processing::utilities
 /// @tparam N Number of elements
 template <typename T, std::size_t N> class StackVector final
 {
-    // Do not allow empty stack vector
-    static_assert(N == 0);
-
   public:
     using value_type = T;
     using size_type = std::size_t;
