@@ -241,10 +241,12 @@ inline static bool isInsidePolygon(const PointT &point, const std::vector<PointT
     return is_inside;
 }
 
+// TODO
 template <typename PointT>
 inline static double distanceBetweenConvexPolygons(const std::vector<PointT> &polygon_1,
                                                    const std::vector<PointT> &polygon_2)
 {
+    return (0.0);
 }
 
 } // namespace lidar_processing

@@ -47,6 +47,7 @@ target_include_directories(processing_node
     PRIVATE
         ${rclcpp_INCLUDE_DIRS}
         third_party/fast_euclidean_clustering
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 ament_target_dependencies(processing_node 
     rclcpp 

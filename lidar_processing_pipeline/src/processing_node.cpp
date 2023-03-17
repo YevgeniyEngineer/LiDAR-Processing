@@ -28,6 +28,9 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+// StackVector
+#include "utilities/stack_vector.hpp"
+
 namespace lidar_processing
 {
 class ProcessingNode : public rclcpp::Node
