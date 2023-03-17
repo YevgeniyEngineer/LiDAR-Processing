@@ -196,16 +196,11 @@ template <typename T, std::size_t N> class StackVector final
             throw std::out_of_range("Invalid iterator position");
         }
 
-        if (pos == end())
+        if (pos != end())
         {
-            new (data_.data() + size_) T(std::forward<Args>(args)...);
-        }
-        else
-        {
-            T temp(std::forward<Args>(args)...);
             std::move_backward(pos, end(), end() + 1);
-            *pos = std::move(temp);
         }
+        *pos = T(std::forward<Args>(args)...);
 
         ++size_;
         return pos;
