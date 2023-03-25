@@ -18,6 +18,8 @@ find_package(geometry_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 
+add_subdirectory(./DBSCAN)
+
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
@@ -48,6 +50,7 @@ target_include_directories(processing_node
         ${rclcpp_INCLUDE_DIRS}
         third_party/fast_euclidean_clustering
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/DBSCAN/include
 )
 ament_target_dependencies(processing_node 
     rclcpp 

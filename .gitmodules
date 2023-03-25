@@ -1,0 +1,3 @@
+[submodule "lidar_processing_pipeline/DBSCAN"]
+	path = lidar_processing_pipeline/DBSCAN
+	url = https://github.com/YevgeniyEngineer/DBSCAN.git

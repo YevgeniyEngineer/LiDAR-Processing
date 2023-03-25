@@ -1,5 +1,6 @@
 // Processing
 #include "conversions.hpp"
+#include "dbscan.hpp"
 #include "ground_segmentation.hpp"
 #include "internal_types.hpp"
 #include "obstacle_clustering.hpp"
@@ -79,6 +80,10 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     // Instantiate processing objects
     std::unique_ptr<GroundSegmenter> ground_segmenter = std::make_unique<GroundSegmenter>();
     std::unique_ptr<ObstacleClusterer> obstacle_clusterer = std::make_unique<ObstacleClusterer>();
+
+    obstacle_clusterer->setNeighbourRadiusThreshold(0.5);
+    obstacle_clusterer->setMinClusterSize(10);
+    obstacle_clusterer->setClusteringAlgorithm(ClusteringAlgorithm::FAST_EUCLIDEAN_CLUSTERING);
 
     // Convert PointCloud2 to pcl::PointCloud<pcl::PointXYZI>
     std::unique_ptr<pcl::PointCloud<pcl::PointXYZI>> point_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZI>>();

@@ -111,7 +111,7 @@ template <typename T, std::size_t N> class StackVector final
     }
 
     /// @brief Returns whether the StackVector is empty.
-    /// @return True if empty, else False
+    /// @return True if empty, else False.
     bool empty() const noexcept
     {
         return (size_ == 0UL);
