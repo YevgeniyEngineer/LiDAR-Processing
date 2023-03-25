@@ -25,14 +25,14 @@ link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
 # build rules for executable "data_reader_node"
-add_executable(data_reader_node 
-    src/data_reader_node.cpp
+add_executable(point_cloud_publisher_node 
+    src/point_cloud_publisher_node.cpp
 )
-ament_target_dependencies(data_reader_node 
+ament_target_dependencies(point_cloud_publisher_node 
     rclcpp 
     sensor_msgs
 )
-target_link_libraries(data_reader_node 
+target_link_libraries(point_cloud_publisher_node 
     ${PCL_LIBRARIES}
     ${rclcpp_LIBRARIES}
 )

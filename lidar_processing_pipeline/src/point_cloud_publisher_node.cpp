@@ -1,35 +1,37 @@
 // STL
-#include <chrono>
-#include <cstdint>
-#include <cstring>
-#include <filesystem>
-#include <functional>
-#include <memory>
-#include <stdexcept>
-#include <string>
-#include <tuple>
-#include <utility>
-#include <vector>
+#include <chrono>     // std::chrono
+#include <cstdint>    // std::uint32_t
+#include <cstring>    // std::memcpy
+#include <filesystem> // std::filesystem
+#include <functional> // std::bind
+#include <memory>     // std::shared_ptr
+#include <stdexcept>  // std::runtime_error
+#include <string>     // std::string
+#include <tuple>      // std::tuple
+#include <utility>    // std::move
+#include <vector>     // std::vector
 
 // ROS2
-#include <rclcpp/publisher.hpp>
-#include <rclcpp/rclcpp.hpp>
-#include <rclcpp/timer.hpp>
-#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <rclcpp/executors.hpp>             // rclcpp::spin
+#include <rclcpp/node.hpp>                  // rclcpp::Node
+#include <rclcpp/publisher.hpp>             // rclcpp::Publisher
+#include <rclcpp/qos.hpp>                   // rclcpp::QoS
+#include <rclcpp/timer.hpp>                 // rclcpp::TimerBase
+#include <rclcpp/utilities.hpp>             // rclcpp::shutdown
+#include <sensor_msgs/msg/point_cloud2.hpp> // sensor_msgs::msg::PointCloud2
+#include <sensor_msgs/msg/point_field.hpp>  // sensor_msgs::msg::PointField
 
 // PCL
-#include <pcl/PCLPointCloud2.h>
-#include <pcl/conversions.h>
-#include <pcl/for_each_type.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
+#include <pcl/PCLPointField.h> // pcl::PCLPointField::PointFieldTypes
+#include <pcl/io/pcd_io.h>     // pcl::io::loadPCDFile
+#include <pcl/point_cloud.h>   // pcl::PointCloud
+#include <pcl/point_types.h>   // pcl::PointXYZI
 
 using namespace std::chrono_literals;
 
 namespace lidar_processing
 {
-class PointCloudPublisher : public rclcpp::Node
+class PointCloudPublisherNode : public rclcpp::Node
 {
     using PointFieldTypes = pcl::PCLPointField::PointFieldTypes;
     using PointCloud2 = sensor_msgs::msg::PointCloud2;
@@ -38,8 +40,8 @@ class PointCloudPublisher : public rclcpp::Node
     constexpr static double SECONDS_TO_NANOSECONDS = 1.0e9;
 
   public:
-    PointCloudPublisher(const std::filesystem::path &data_path, const std::string &topic = "pointcloud",
-                        bool print_debug_info = false)
+    PointCloudPublisherNode(const std::filesystem::path &data_path, const std::string &topic = "pointcloud",
+                            bool print_debug_info = false)
         : rclcpp::Node::Node("data_reader_node"), publisher_(nullptr), timer_(nullptr),
           print_debug_info_(print_debug_info)
     {
@@ -51,7 +53,7 @@ class PointCloudPublisher : public rclcpp::Node
         std::cout << "data_reader_node started" << std::endl;
 
         // Specify QoS settings
-        rclcpp::QoS qos(rclcpp::KeepLast(3));
+        rclcpp::QoS qos(5);
         qos.deadline(std::chrono::seconds(1));
         qos.liveliness_lease_duration(std::chrono::seconds(1));
         qos.reliability(rmw_qos_reliability_policy_t::RMW_QOS_POLICY_RELIABILITY_RELIABLE);
@@ -62,7 +64,7 @@ class PointCloudPublisher : public rclcpp::Node
         publisher_ = this->create_publisher<PointCloud2>(topic, qos);
 
         // Create event timer that will trigger readAndPublishDataSample every 100ms
-        timer_ = this->create_wall_timer(100ms, std::bind(&PointCloudPublisher::readAndPublishDataSample, this));
+        timer_ = this->create_wall_timer(100ms, std::bind(&PointCloudPublisherNode::readAndPublishDataSample, this));
 
         // Read files
         for (const auto &file_path : std::filesystem::directory_iterator(data_path))
@@ -80,7 +82,7 @@ class PointCloudPublisher : public rclcpp::Node
         file_paths_iterator_ = file_paths_.begin();
     };
 
-    virtual ~PointCloudPublisher() = default;
+    virtual ~PointCloudPublisherNode() = default;
 
     void readAndPublishDataSample()
     {
@@ -108,11 +110,10 @@ class PointCloudPublisher : public rclcpp::Node
         PointCloud2 output_message;
         output_message.header.frame_id = "pointcloud";
 
-        // Get seconds + nanoseconds since epoch
-
-        const auto nanosec_timestamp = std::chrono::system_clock::now().time_since_epoch().count();
+        // Get seconds + nanoseconds to populate metadata
+        const auto nanosec_timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
         output_message.header.stamp.sec =
-            static_cast<int>(static_cast<double>(nanosec_timestamp / SECONDS_TO_NANOSECONDS));
+            static_cast<std::int32_t>(static_cast<double>(nanosec_timestamp / SECONDS_TO_NANOSECONDS));
         output_message.header.stamp.nanosec = static_cast<std::uint32_t>(
             nanosec_timestamp -
             static_cast<std::int64_t>(static_cast<double>(output_message.header.stamp.sec) * SECONDS_TO_NANOSECONDS));
@@ -167,7 +168,7 @@ class PointCloudPublisher : public rclcpp::Node
 };
 } // namespace lidar_processing
 
-int main(int argc, const char **const argv)
+std::int32_t main(std::int32_t argc, const char **const argv)
 {
     rclcpp::init(argc, argv);
     rclcpp::install_signal_handlers();
@@ -177,7 +178,7 @@ int main(int argc, const char **const argv)
     bool success = true;
     try
     {
-        rclcpp::spin(std::make_shared<lidar_processing::PointCloudPublisher>(data_path));
+        rclcpp::spin(std::make_shared<lidar_processing::PointCloudPublisherNode>(data_path));
     }
     catch (const std::exception &ex)
     {

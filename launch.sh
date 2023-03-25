@@ -7,7 +7,7 @@ LAUCH_DIR="${BUILD_DIR}/lidar_processing_pipeline"
 
 # Launch
 cd "${LAUCH_DIR}"
-./data_reader_node &
+./point_cloud_publisher_node &
 ./processing_node &
 
 cd "${SCRIPT_DIR}"
