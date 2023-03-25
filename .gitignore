@@ -33,7 +33,6 @@
 
 # Build
 build
-.vscode
 
 # Temporarily disable
 test
