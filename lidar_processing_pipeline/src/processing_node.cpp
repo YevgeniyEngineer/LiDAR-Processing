@@ -46,13 +46,20 @@ class ProcessingNode : public rclcpp::Node
         std::cout << "processing_node started" << std::endl;
 
         // Subscriber will receive messages from data_reader_node
+        rclcpp::QoS qos(5);
+        qos.deadline(std::chrono::seconds(1));
+        qos.liveliness_lease_duration(std::chrono::seconds(1));
+        qos.reliability(rmw_qos_reliability_policy_t::RMW_QOS_POLICY_RELIABILITY_RELIABLE);
+        qos.durability(rmw_qos_durability_policy_t::RMW_QOS_POLICY_DURABILITY_VOLATILE);
+        qos.history(rmw_qos_history_policy_t::RMW_QOS_POLICY_HISTORY_KEEP_LAST);
+
         subscriber_ = this->create_subscription<PointCloud2>(
-            "pointcloud", 10, std::bind(&ProcessingNode::process, this, std::placeholders::_1));
+            "pointcloud", qos, std::bind(&ProcessingNode::process, this, std::placeholders::_1));
 
         // Publisher nodes
-        publisher_ground_cloud_ = this->create_publisher<PointCloud2>("ground_pointcloud", 10);
-        publisher_obstacle_cloud_ = this->create_publisher<PointCloud2>("obstacle_pointcloud", 10);
-        publisher_obstacle_convex_hulls_ = this->create_publisher<MarkerArray>("convex_polygonization", 10);
+        publisher_ground_cloud_ = this->create_publisher<PointCloud2>("ground_pointcloud", qos);
+        publisher_obstacle_cloud_ = this->create_publisher<PointCloud2>("obstacle_pointcloud", qos);
+        publisher_obstacle_convex_hulls_ = this->create_publisher<MarkerArray>("convex_polygonization", qos);
     }
 
     ~ProcessingNode() = default;
