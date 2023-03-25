@@ -133,7 +133,7 @@ class GroundSegmenter final
     /// @param cloud Input point cloud to be split into multiple planes
     /// @param cloud_segments Vector of point cloud components
     void formPlanarPartitions(const pcl::PointCloud<pcl::PointXYZ> &cloud,
-                              std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &cloud_segments);
+                              std::vector<pcl::PointCloud<pcl::PointXYZ>> &cloud_segments);
 
     /// @brief Initial estimation of ground points
     /// @param cloud Input point cloud
@@ -152,7 +152,7 @@ class GroundSegmenter final
     /// @param cloud_segments Point cloud corresponding to either ground or obstacle cloud partition
     /// @param segmentation_label Segmentation label to be assigned to this point cloud
     /// @param segmented_cloud Output point cloud with segmentation labels
-    void combineSegmentedPoints(const std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &cloud_segments,
+    void combineSegmentedPoints(const std::vector<pcl::PointCloud<pcl::PointXYZ>> &cloud_segments,
                                 const SegmentationLabels &segmentation_label,
                                 pcl::PointCloud<pcl::PointXYZRGBL> &segmented_cloud) const;
 
@@ -186,7 +186,7 @@ void GroundSegmenter::segmentGround(const typename pcl::PointCloud<PointT> &inpu
     const auto &number_of_points = input_cloud.points.size();
 
     // convert input pointcloud from PointT to PointXYZ
-    auto converted_input_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+    auto converted_input_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZ>>();
     for (const auto &point : input_cloud.points)
     {
         converted_input_cloud->points.emplace_back(point.x, point.y, point.z);
@@ -196,24 +196,28 @@ void GroundSegmenter::segmentGround(const typename pcl::PointCloud<PointT> &inpu
     converted_input_cloud->is_dense = true;
 
     // partition point cloud into segments
-    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloud_segments;
+    std::vector<pcl::PointCloud<pcl::PointXYZ>> cloud_segments;
     formPlanarPartitions(*converted_input_cloud, cloud_segments);
 
     // iterate over segments
-    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> ground_cloud_segments;
-    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> obstacle_cloud_segments;
+    std::vector<pcl::PointCloud<pcl::PointXYZ>> ground_cloud_segments;
+    std::vector<pcl::PointCloud<pcl::PointXYZ>> obstacle_cloud_segments;
 
-    for (pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_segment : cloud_segments)
+    for (const auto &cloud_segment : cloud_segments)
     {
-        pcl::PointCloud<pcl::PointXYZ>::Ptr ground_cloud_segment = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-        pcl::PointCloud<pcl::PointXYZ>::Ptr obstacle_cloud_segment = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+        auto ground_cloud_segment = std::make_unique<pcl::PointCloud<pcl::PointXYZ>>();
+        auto obstacle_cloud_segment = std::make_unique<pcl::PointCloud<pcl::PointXYZ>>();
 
         // segment points into ground and non-ground points
-        fitGroundPlane(*cloud_segment, *ground_cloud_segment, *obstacle_cloud_segment);
+        fitGroundPlane(cloud_segment, *ground_cloud_segment, *obstacle_cloud_segment);
 
         // accumulate into corresponding vectors
-        ground_cloud_segments.emplace_back(std::move(ground_cloud_segment));
-        obstacle_cloud_segments.emplace_back(std::move(obstacle_cloud_segment));
+        ground_cloud_segments.push_back(std::move(*ground_cloud_segment));
+        obstacle_cloud_segments.push_back(std::move(*obstacle_cloud_segment));
+
+        // Clean underlying pointers
+        ground_cloud_segment.reset();
+        obstacle_cloud_segment.reset();
     }
 
     combineSegmentedPoints(ground_cloud_segments, SegmentationLabels::GROUND, ground_cloud);

@@ -46,12 +46,21 @@ class ProcessingNode : public rclcpp::Node
         std::cout << "processing_node started" << std::endl;
 
         // Subscriber will receive messages from data_reader_node
-        rclcpp::QoS qos(5);
-        qos.deadline(std::chrono::seconds(1));
+        rclcpp::QoS qos(2);
+        qos.keep_last(2);
+        qos.reliable();
+        qos.durability_volatile();
+        qos.liveliness(rclcpp::LivelinessPolicy::SystemDefault);
+
+        // How long a node must wait before declaring itself "alive" to the rest of the system again
+        // If the node fails to send out a liveliness message within the specified lease duration, it is considered
+        // "dead" or "unresponsive" by the rest of the system
         qos.liveliness_lease_duration(std::chrono::seconds(1));
-        qos.reliability(rmw_qos_reliability_policy_t::RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-        qos.durability(rmw_qos_durability_policy_t::RMW_QOS_POLICY_DURABILITY_VOLATILE);
-        qos.history(rmw_qos_history_policy_t::RMW_QOS_POLICY_HISTORY_KEEP_LAST);
+
+        // How long a node must wait for a response from a remote node before declaring it as "dead" or "unresponsive"
+        // If the remote node fails to respond within the specified deadline, the requesting node considers the remote
+        // node as "dead" or "unresponsive"
+        qos.deadline(std::chrono::seconds(1));
 
         subscriber_ = this->create_subscription<PointCloud2>(
             "pointcloud", qos, std::bind(&ProcessingNode::process, this, std::placeholders::_1));
@@ -85,25 +94,22 @@ class ProcessingNode : public rclcpp::Node
 void ProcessingNode::process(const PointCloud2 &input_message)
 {
     // Instantiate processing objects
-    std::unique_ptr<GroundSegmenter> ground_segmenter = std::make_unique<GroundSegmenter>();
-    std::unique_ptr<ObstacleClusterer> obstacle_clusterer = std::make_unique<ObstacleClusterer>();
+    auto ground_segmenter = std::make_unique<GroundSegmenter>();
+    auto obstacle_clusterer = std::make_unique<ObstacleClusterer>();
 
-    obstacle_clusterer->setNeighbourRadiusThreshold(0.5);
-    obstacle_clusterer->setMinClusterSize(10);
-    obstacle_clusterer->setClusteringAlgorithm(ClusteringAlgorithm::FAST_EUCLIDEAN_CLUSTERING);
+    obstacle_clusterer->setNeighbourRadiusThreshold(1.0);
+    obstacle_clusterer->setMinClusterSize(30);
+    obstacle_clusterer->setClusteringAlgorithm(ClusteringAlgorithm::DBSCAN);
 
     // Convert PointCloud2 to pcl::PointCloud<pcl::PointXYZI>
-    std::unique_ptr<pcl::PointCloud<pcl::PointXYZI>> point_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZI>>();
+    auto point_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZI>>();
     convertPointCloud2ToPCL(input_message, *point_cloud);
 
     // Ground segmentation
     const auto &ground_segmentation_start_time = std::chrono::high_resolution_clock::now();
 
-    std::unique_ptr<pcl::PointCloud<pcl::PointXYZRGBL>> ground_cloud =
-        std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
-
-    std::unique_ptr<pcl::PointCloud<pcl::PointXYZRGBL>> obstacle_cloud =
-        std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
+    auto ground_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
+    auto obstacle_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
 
     ground_segmenter->segmentGround(*point_cloud, *ground_cloud, *obstacle_cloud);
 
@@ -111,8 +117,7 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     std::cout << "Ground segmentation time: "
               << (ground_segmentation_end_time - ground_segmentation_start_time).count() / 1e9 << std::endl;
 
-    // std::cout << "Ground Pts: " << ground_cloud->size() << " | Obstacle Pts: " << obstacle_cloud->size() <<
-    // std::endl;
+    std::cout << "Ground Pts: " << ground_cloud->size() << " | Obstacle Pts: " << obstacle_cloud->size() << std::endl;
 
     // Obstacle clustering
     const auto &obstacle_clustering_start_time = std::chrono::high_resolution_clock::now();
@@ -141,7 +146,7 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     // Convert to ROS2 format and publish (ground segmentation)
     if (!ground_cloud->empty())
     {
-        std::unique_ptr<PointCloud2> output_ground_segmentation_message = std::make_unique<PointCloud2>();
+        auto output_ground_segmentation_message = std::make_unique<PointCloud2>();
         output_ground_segmentation_message->header = input_message.header;
         output_ground_segmentation_message->is_bigendian = input_message.is_bigendian;
         convertPCLToPointCloud2(*ground_cloud, *output_ground_segmentation_message);
@@ -153,7 +158,7 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     }
     if (!obstacle_cloud->empty())
     {
-        std::unique_ptr<PointCloud2> output_obstacle_segmentation_message = std::make_unique<PointCloud2>();
+        auto output_obstacle_segmentation_message = std::make_unique<PointCloud2>();
         output_obstacle_segmentation_message->header = input_message.header;
         output_obstacle_segmentation_message->is_bigendian = input_message.is_bigendian;
         convertPCLToPointCloud2(*obstacle_cloud, *output_obstacle_segmentation_message);
@@ -167,7 +172,7 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     // Convert to ROS2 format and publish (obstacle clustering - polygonization)
     if (!convex_hulls.empty())
     {
-        std::unique_ptr<MarkerArray> output_convex_polygonization_message = std::make_unique<MarkerArray>();
+        auto output_convex_polygonization_message = std::make_unique<MarkerArray>();
         convertPointXYZTypeToMarkerArray(convex_hulls, input_message.header.frame_id, input_message.header.stamp,
                                          *output_convex_polygonization_message);
         publisher_obstacle_convex_hulls_->publish(*output_convex_polygonization_message);
@@ -175,7 +180,7 @@ void ProcessingNode::process(const PointCloud2 &input_message)
 }
 } // namespace lidar_processing
 
-int main(int argc, const char **argv)
+int main(int argc, const char **const argv)
 {
     rclcpp::init(argc, argv);
     rclcpp::install_signal_handlers();

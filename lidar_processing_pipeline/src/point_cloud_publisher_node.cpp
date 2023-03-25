@@ -53,12 +53,21 @@ class PointCloudPublisherNode : public rclcpp::Node
         std::cout << "data_reader_node started" << std::endl;
 
         // Specify QoS settings
-        rclcpp::QoS qos(5);
-        qos.deadline(std::chrono::seconds(1));
+        rclcpp::QoS qos(2);
+        qos.keep_last(2);
+        qos.reliable();
+        qos.durability_volatile();
+        qos.liveliness(rclcpp::LivelinessPolicy::SystemDefault);
+
+        // How long a node must wait before declaring itself "alive" to the rest of the system again
+        // If the node fails to send out a liveliness message within the specified lease duration, it is considered
+        // "dead" or "unresponsive" by the rest of the system
         qos.liveliness_lease_duration(std::chrono::seconds(1));
-        qos.reliability(rmw_qos_reliability_policy_t::RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-        qos.durability(rmw_qos_durability_policy_t::RMW_QOS_POLICY_DURABILITY_VOLATILE);
-        qos.history(rmw_qos_history_policy_t::RMW_QOS_POLICY_HISTORY_KEEP_LAST);
+
+        // How long a node must wait for a response from a remote node before declaring it as "dead" or "unresponsive"
+        // If the remote node fails to respond within the specified deadline, the requesting node considers the remote
+        // node as "dead" or "unresponsive"
+        qos.deadline(std::chrono::seconds(1));
 
         // Create publisher for PointCloud2 message type
         publisher_ = this->create_publisher<PointCloud2>(topic, qos);

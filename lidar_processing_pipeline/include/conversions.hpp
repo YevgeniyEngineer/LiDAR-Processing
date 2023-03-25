@@ -98,7 +98,7 @@ void convertPointXYZTypeToMarkerArray(const std::vector<std::vector<PointT>> &hu
         const auto &hull_points = hull_cluster_points[hull_no];
         visualization_msgs::msg::Marker marker;
         marker.lifetime.sec = 0;
-        marker.lifetime.nanosec = 100'000'000;
+        marker.lifetime.nanosec = 300'000'000;
         marker.header.frame_id = frame_id;
         marker.header.stamp = stamp;
         marker.ns = "convex_hull";
@@ -112,7 +112,7 @@ void convertPointXYZTypeToMarkerArray(const std::vector<std::vector<PointT>> &hu
         marker.pose.orientation.y = 0.0;
         marker.pose.orientation.z = 0.0;
         marker.pose.orientation.w = 1.0;
-        marker.scale.x = 0.15;
+        marker.scale.x = 0.1f;
         marker.color.a = 1.0f;
         marker.color.r = 1.0f;
         marker.color.g = 0.0f;

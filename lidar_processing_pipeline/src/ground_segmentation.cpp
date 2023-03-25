@@ -33,7 +33,7 @@ GroundSegmenter::GroundSegmenter(std::uint32_t number_of_iterations, std::uint32
 }
 
 void GroundSegmenter::formPlanarPartitions(const pcl::PointCloud<pcl::PointXYZ> &cloud,
-                                           std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &cloud_segments)
+                                           std::vector<pcl::PointCloud<pcl::PointXYZ>> &cloud_segments)
 {
     if (cloud.empty())
     {
@@ -51,34 +51,30 @@ void GroundSegmenter::formPlanarPartitions(const pcl::PointCloud<pcl::PointXYZ> 
     // sort indices using stable sort
     const auto &cloud_points = cloud.points;
     std::sort(std::execution::par, sorted_indices.begin(), sorted_indices.end(),
-              [&cloud_points](const size_t &idx_1, const size_t &idx_2) -> bool {
+              [&cloud_points](const std::size_t &idx_1, const std::size_t &idx_2) -> bool {
                   return cloud_points[idx_1].x < cloud_points[idx_2].x;
               });
 
     // iterate over sorted indices and partition point cloud
-    size_t elements_within_segment = number_of_points / number_of_planar_partitions_;
-    size_t idx_low = 0;
-    size_t idx_high = elements_within_segment;
+    std::size_t elements_within_segment = number_of_points / number_of_planar_partitions_;
+    std::size_t idx_low = 0;
+    std::size_t idx_high = elements_within_segment;
     cloud_segments.reserve(number_of_planar_partitions_);
 
-    pcl::PointXYZ point_cache;
-    for (size_t segment_no = 0; segment_no < number_of_planar_partitions_; ++segment_no)
+    for (std::size_t segment_no = 0; segment_no < number_of_planar_partitions_; ++segment_no)
     {
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_segment = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+        auto cloud_segment = std::make_unique<pcl::PointCloud<pcl::PointXYZ>>();
         cloud_segment->points.reserve(idx_high - idx_low + 1);
 
-        for (size_t sorted_idx_no = idx_low; sorted_idx_no < idx_high; ++sorted_idx_no)
+        for (std::size_t sorted_idx_no = idx_low; sorted_idx_no < idx_high; ++sorted_idx_no)
         {
             const auto &cloud_point = cloud_points[sorted_indices[sorted_idx_no]];
-
-            point_cache.x = cloud_point.x;
-            point_cache.y = cloud_point.y;
-            point_cache.z = cloud_point.z;
-
-            cloud_segment->points.push_back(point_cache);
+            pcl::PointXYZ point_cache{cloud_point.x, cloud_point.y, cloud_point.z};
+            cloud_segment->points.push_back(std::move(point_cache));
         }
 
-        cloud_segments.emplace_back(std::move(cloud_segment));
+        cloud_segments.push_back(std::move(*cloud_segment));
+        cloud_segment.reset();
 
         // update indices
         idx_low = idx_high;
@@ -303,7 +299,7 @@ void GroundSegmenter::fitGroundPlane(const pcl::PointCloud<pcl::PointXYZ> &cloud
     }
 }
 
-void GroundSegmenter::combineSegmentedPoints(const std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> &cloud_segments,
+void GroundSegmenter::combineSegmentedPoints(const std::vector<pcl::PointCloud<pcl::PointXYZ>> &cloud_segments,
                                              const SegmentationLabels &segmentation_label,
                                              pcl::PointCloud<pcl::PointXYZRGBL> &segmented_cloud) const
 {
@@ -324,7 +320,7 @@ void GroundSegmenter::combineSegmentedPoints(const std::vector<pcl::PointCloud<p
     std::uint32_t number_of_elements = 0;
     for (const auto &cloud_segment : cloud_segments)
     {
-        number_of_elements += cloud_segment->size();
+        number_of_elements += cloud_segment.size();
     }
     segmented_cloud.reserve(number_of_elements);
 
@@ -338,13 +334,12 @@ void GroundSegmenter::combineSegmentedPoints(const std::vector<pcl::PointCloud<p
 
     for (const auto &cloud_segment : cloud_segments)
     {
-        for (const auto &point : cloud_segment->points)
+        for (const auto &point : cloud_segment.points)
         {
             point_cache.x = point.x;
             point_cache.y = point.y;
             point_cache.z = point.z;
-
-            segmented_cloud.points.emplace_back(point_cache);
+            segmented_cloud.points.push_back(point_cache);
         }
     }
     segmented_cloud.height = 1;
