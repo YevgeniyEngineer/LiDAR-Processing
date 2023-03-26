@@ -126,7 +126,7 @@ void ObstacleClusterer::clusterObstacles(const pcl::PointCloud<PointT> &cloud,
             for (const auto &cluster_index : cluster_indices.second)
             {
                 // Get the point
-                const auto &point = point_cloud->points[cluster_index].point;
+                const auto &point = point_cloud->points[cluster_index];
                 pcl::PointXYZ point_cache{point[0], point[1], point[2]};
                 cluster_points->push_back(std::move(point_cache));
             }
