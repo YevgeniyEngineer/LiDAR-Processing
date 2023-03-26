@@ -87,17 +87,19 @@ void ObstacleClusterer::clusterObstacles(const pcl::PointCloud<PointT> &cloud,
 
     if (clustering_algorithm_ == ClusteringAlgorithm::DBSCAN)
     {
+        using CoordinateType = decltype(cloud.points[0].x);
+
         // Prepare points for clustering
-        auto point_cloud = std::make_unique<clustering::PointCloud<float>>();
+        auto point_cloud = std::make_unique<clustering::PointCloud<CoordinateType, 3>>();
         for (const auto &point : cloud.points)
         {
-            clustering::Point<float> point_cache{point.x, point.y, point.z};
+            clustering::Point<CoordinateType, 3> point_cache{point.x, point.y, point.z};
             point_cloud->points.push_back(std::move(point_cache));
         }
 
         // Create DBScan object and start clustering
-        auto dbscan =
-            std::make_unique<clustering::DBSCAN<float>>(neighbour_radius_threshold_, min_cluster_size_, *point_cloud);
+        auto dbscan = std::make_unique<clustering::DBSCAN<CoordinateType, 3>>(neighbour_radius_threshold_,
+                                                                              min_cluster_size_, *point_cloud);
 
         dbscan->formClusters();
         const auto clusters = dbscan->getClusterIndices();
