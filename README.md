@@ -1,12 +1,11 @@
 # LiDAR-Processing
 Lidar processing pipeline based on ROS2 Humble that consists of:
-* Reading point cloud data from `data/` folder and publishing on `pointcloud` topic at some predefined constant frequency
+* Reading point cloud data from `data/` folder and publishing on `pointcloud` topic at some predefined constant frequency. To closely simulate real time conditions, 10Hz frequency is used in the current pipeline.
 * Subscribing on `pointcloud` topic and performing several processing steps, such as 
-    * Ground segmentation
-    * Obstacle clustering
-    * Obstacle cluster simplification
-* Processing node publishes visualisable results on `ground_pointcloud`, `obstacle_pointcloud` and `convex_polygonization` topics.
-
+    * Ground segmentation.
+    * Obstacle clustering.
+    * Obstacle cluster simplification.
+* Publishing visualisable results on `ground_pointcloud`, `obstacle_pointcloud` and `convex_polygonization` topics.
 
 ### Build and Launch Nodes
 
