@@ -98,7 +98,7 @@ void convertPointXYZTypeToMarkerArray(const std::vector<std::vector<PointT>> &hu
         const auto &hull_points = hull_cluster_points[hull_no];
         visualization_msgs::msg::Marker marker;
         marker.lifetime.sec = 0;
-        marker.lifetime.nanosec = 300'000'000;
+        marker.lifetime.nanosec = 150'000'000;
         marker.header.frame_id = frame_id;
         marker.header.stamp = stamp;
         marker.ns = "convex_hull";

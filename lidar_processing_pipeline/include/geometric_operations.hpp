@@ -27,7 +27,8 @@ inline static bool counterclockwise(const PointT &point_1, const PointT &point_2
 /// @param points Vector of points
 /// @param hull Convex hull formed from 2D points
 template <typename PointT>
-inline static void constructGrahamAndrewConvexHull(std::vector<PointT> points, std::vector<PointT> &hull) noexcept
+inline static void constructGrahamAndrewConvexHull(std::vector<PointT> points, std::vector<PointT> &hull,
+                                                   bool threaded = false) noexcept
 {
     // Clean old point cache
     hull.clear();
@@ -44,13 +45,13 @@ inline static void constructGrahamAndrewConvexHull(std::vector<PointT> points, s
     }
 
     // Sort points lexicographically
-    if (n > 500)
+    if (threaded)
     {
         std::sort(std::execution::par, points.begin(), points.end());
     }
     else
     {
-        std::sort(std::execution::unseq, points.begin(), points.end());
+        std::sort(points.begin(), points.end());
     }
 
     // Reserve points for convex hull
@@ -144,7 +145,8 @@ inline static void constructJarvisMarchConvexHull(const std::vector<PointT> &poi
 /// @param points An array of 2D points
 /// @param hull Convex hull
 template <typename PointT>
-inline static void constructChanConvexHull(std::vector<PointT> points, std::vector<PointT> &hull) noexcept
+inline static void constructChanConvexHull(std::vector<PointT> points, std::vector<PointT> &hull,
+                                           bool threaded = false) noexcept
 {
     // Clean old point cache
     hull.clear();
@@ -153,7 +155,7 @@ inline static void constructChanConvexHull(std::vector<PointT> points, std::vect
     int n = points.size();
     if (n <= 3)
     {
-        std::move(std::make_move_iterator(points.begin()), std::make_move_iterator(points.end()),
+        std::copy(std::make_move_iterator(points.begin()), std::make_move_iterator(points.end()),
                   std::back_inserter(hull));
 
         points.erase(points.begin(), points.end());
@@ -166,26 +168,27 @@ inline static void constructChanConvexHull(std::vector<PointT> points, std::vect
 
     // Divide points into number_of_subsets subsets each containing number_of_points_within_subset points
     std::vector<std::vector<PointT>> subsets(number_of_subsets);
-    for (int subset_no = 0; subset_no < number_of_subsets; ++subset_no)
+
+    // Pre-allocate memory
+    for (auto &subset : subsets)
     {
-        // Get the range of the next set of m elements
-        auto start_it = std::next(points.begin(), subset_no * number_of_points_within_subset);
-        auto stop_it =
-            std::next(points.begin(), subset_no * number_of_points_within_subset + number_of_points_within_subset);
-
-        // Allocate memory of the sub-vector
-        subsets[subset_no].reserve(number_of_points_within_subset);
-
-        // Code to handle the last sub-vector if it contains less elements than other sub-vectors
-        if (subset_no * number_of_points_within_subset + number_of_points_within_subset > points.size())
-        {
-            stop_it = points.end();
-        }
-
-        // Copy elements from the input range to the sub-vector
-        std::move(std::make_move_iterator(start_it), std::make_move_iterator(stop_it),
-                  std::back_inserter(subsets[subset_no]));
+        subset.reserve(number_of_points_within_subset);
     }
+
+    int start_idx = 0;
+    for (int subset_no = 0; subset_no < number_of_subsets - 1; ++subset_no)
+    {
+        auto start_it = std::next(points.begin(), start_idx);
+        auto stop_it = std::next(points.begin(), start_idx + number_of_points_within_subset);
+
+        std::copy(start_it, stop_it, std::back_insert_iterator(subsets[subset_no]));
+        start_idx += number_of_points_within_subset;
+    }
+
+    // Handle the last subset
+    auto start_it = std::next(points.begin(), start_idx);
+    auto stop_it = points.end();
+    std::copy(start_it, stop_it, std::back_insert_iterator(subsets[number_of_subsets - 1]));
 
     // After moving elements from points vector, all elements are not in indeterminate state
     points.erase(points.begin(), points.end());
@@ -194,19 +197,35 @@ inline static void constructChanConvexHull(std::vector<PointT> points, std::vect
     std::vector<std::vector<PointT>> convex_hulls(subsets.size());
     std::vector<int> subset_numbers(subsets.size());
     std::iota(subset_numbers.begin(), subset_numbers.end(), 0);
-    std::for_each(std::execution::par, subset_numbers.cbegin(), subset_numbers.cend(),
-                  [&convex_hulls, &subsets](const int subset_no) {
-                      // Construct convex hull for current subset
-                      // This will fill convex_hulls[subset_no] with the hull corresponding to subsets[subset_no]
-                      constructGrahamAndrewConvexHull(subsets[subset_no], convex_hulls[subset_no]);
-                  });
 
+    if (threaded)
+    {
+        std::for_each(std::execution::par, subset_numbers.cbegin(), subset_numbers.cend(),
+                      [&convex_hulls, &subsets](const int subset_no) {
+                          // Construct convex hull for current subset
+                          // This will fill convex_hulls[subset_no] with the hull corresponding to subsets[subset_no]
+                          constructGrahamAndrewConvexHull(subsets[subset_no], convex_hulls[subset_no]);
+                      });
+    }
+    else
+    {
+        std::for_each(subset_numbers.cbegin(), subset_numbers.cend(), [&convex_hulls, &subsets](const int subset_no) {
+            // Construct convex hull for current subset
+            // This will fill convex_hulls[subset_no] with the hull corresponding to subsets[subset_no]
+            constructGrahamAndrewConvexHull(subsets[subset_no], convex_hulls[subset_no]);
+        });
+    }
     // Merge convex hull points
-    std::vector<PointT> merged_points;
+    std::size_t reservation_size = 0;
     for (const auto &hull_points : convex_hulls)
     {
-        merged_points.reserve(merged_points.size() + hull_points.size());
-        std::move(std::make_move_iterator(hull_points.begin()), std::make_move_iterator(hull_points.end()),
+        reservation_size += hull_points.size();
+    }
+    std::vector<PointT> merged_points;
+    merged_points.reserve(reservation_size);
+    for (auto &&hull_points : convex_hulls)
+    {
+        std::copy(std::make_move_iterator(hull_points.begin()), std::make_move_iterator(hull_points.end()),
                   std::back_inserter(merged_points));
     }
 

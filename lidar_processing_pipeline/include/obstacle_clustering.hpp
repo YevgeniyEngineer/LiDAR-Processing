@@ -24,6 +24,8 @@
 #include <pcl/point_types.h>
 #include <pcl/search/kdtree.h>
 
+#define DEBUG_CLUSTERING 0
+
 namespace lidar_processing
 {
 enum class ClusteringAlgorithm : std::uint8_t
@@ -35,8 +37,8 @@ enum class ClusteringAlgorithm : std::uint8_t
 class ObstacleClusterer : public pcl::PCLBase<pcl::PointXYZ>
 {
   public:
-    ObstacleClusterer(double neighbour_radius_threshold = 0.8, double cluster_quality = 0.3,
-                      unsigned int min_cluster_size = 10, unsigned int max_neighbour_points = 4000,
+    ObstacleClusterer(double neighbour_radius_threshold = 0.8, double cluster_quality = 0.5,
+                      unsigned int min_cluster_size = 10, unsigned int max_neighbour_points = 100000,
                       unsigned int min_neighbour_points_threshold = 4,
                       ClusteringAlgorithm clustering_algorithm = ClusteringAlgorithm::DBSCAN)
         : neighbour_radius_threshold_(neighbour_radius_threshold), cluster_quality_(cluster_quality),
@@ -94,15 +96,27 @@ void ObstacleClusterer::clusterObstacles(const pcl::PointCloud<PointT> &cloud,
         for (const auto &point : cloud.points)
         {
             clustering::Point<CoordinateType, 3> point_cache{point.x, point.y, point.z};
-            point_cloud->points.push_back(std::move(point_cache));
+            point_cloud->points.emplace_back(std::move(point_cache));
         }
 
+#if DEBUG_CLUSTERING
+        std::cout << "Number of points to be clustered: " << point_cloud->points.size() << std::endl;
+#endif
+
         // Create DBScan object and start clustering
-        auto dbscan = std::make_unique<clustering::DBSCAN<CoordinateType, 3>>(neighbour_radius_threshold_,
-                                                                              min_cluster_size_, *point_cloud);
+        auto dbscan = std::make_unique<clustering::dbscan::DBSCAN<CoordinateType, 3>>(neighbour_radius_threshold_,
+                                                                                      min_cluster_size_, *point_cloud);
+
+#if DEBUG_CLUSTERING
+        std::cout << "Created DBSCAN Object" << std::endl;
+#endif
 
         dbscan->formClusters();
         const auto clusters = dbscan->getClusterIndices();
+
+#if DEBUG_CLUSTERING
+        std::cout << "Created " << clusters.size() << " clusters." << std::endl;
+#endif
 
         // Copy points to output cloud
         clustered_cloud.clear();
@@ -110,11 +124,11 @@ void ObstacleClusterer::clusterObstacles(const pcl::PointCloud<PointT> &cloud,
         for (const auto &cluster_indices : clusters)
         {
             // Skip noise points
-            if (cluster_indices.first == clustering::labels::NOISE)
+            if (cluster_indices.first == clustering::dbscan::labels::NOISE)
             {
                 continue;
             }
-            else if (cluster_indices.first == clustering::labels::UNDEFINED)
+            else if (cluster_indices.first == clustering::dbscan::labels::UNDEFINED)
             {
                 std::cerr << "DBSCAN added UNDEFINED cluster\n";
                 continue;
@@ -128,13 +142,17 @@ void ObstacleClusterer::clusterObstacles(const pcl::PointCloud<PointT> &cloud,
                 // Get the point
                 const auto &point = point_cloud->points[cluster_index];
                 pcl::PointXYZ point_cache{point[0], point[1], point[2]};
-                cluster_points->push_back(std::move(point_cache));
+                cluster_points->emplace_back(std::move(point_cache));
             }
             cluster_points->height = 1;
             cluster_points->width = cluster_points->points.size();
-            clustered_cloud.push_back(std::move(*cluster_points));
+            clustered_cloud.emplace_back(std::move(*cluster_points));
             cluster_points.reset();
         }
+
+#if DEBUG_CLUSTERING
+        std::cout << "Copied " << clustered_cloud.size() << " clusters." << std::endl;
+#endif
     }
     else if (clustering_algorithm_ == ClusteringAlgorithm::FAST_EUCLIDEAN_CLUSTERING)
     {
@@ -144,7 +162,7 @@ void ObstacleClusterer::clusterObstacles(const pcl::PointCloud<PointT> &cloud,
         for (const auto &point : cloud.points)
         {
             pcl::PointXYZ point_cache{point.x, point.y, point.z};
-            input_cloud->points.push_back(std::move(point_cache));
+            input_cloud->points.emplace_back(std::move(point_cache));
         }
         input_cloud->height = 1;
         input_cloud->width = input_cloud->points.size();
@@ -172,11 +190,11 @@ void ObstacleClusterer::clusterObstacles(const pcl::PointCloud<PointT> &cloud,
             {
                 const pcl::PointXYZ &point_xyz = input_cloud->points[index];
                 pcl::PointXYZ point_cache{point_xyz.x, point_xyz.y, point_xyz.z};
-                cluster_points->push_back(std::move(point_cache));
+                cluster_points->emplace_back(std::move(point_cache));
             }
             cluster_points->height = 1;
             cluster_points->width = cluster_points->points.size();
-            clustered_cloud.push_back(std::move(*cluster_points));
+            clustered_cloud.emplace_back(std::move(*cluster_points));
             cluster_points.reset();
         }
     }

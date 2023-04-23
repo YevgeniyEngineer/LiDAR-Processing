@@ -81,7 +81,12 @@
         "core": "cpp",
         "valarray": "cpp",
         "geometry": "cpp",
-        "execution": "cpp"
+        "execution": "cpp",
+        "any": "cpp",
+        "coroutine": "cpp",
+        "hash_map": "cpp",
+        "hash_set": "cpp",
+        "ranges": "cpp"
     },
     "cmake.configureOnOpen": true
 }

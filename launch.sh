@@ -6,6 +6,8 @@ BUILD_DIR="${SCRIPT_DIR}/build"
 LAUCH_DIR="${BUILD_DIR}/lidar_processing_pipeline"
 
 # Launch
+unset GTK_PATH
+
 cd "${LAUCH_DIR}"
 ./point_cloud_publisher_node &
 ./processing_node &

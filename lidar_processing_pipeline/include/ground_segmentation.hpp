@@ -63,8 +63,8 @@ class GroundSegmenter final
     /// @param initial_seed_threshold Filter points that have height less than the height of the lowest point
     /// representative
     /// + initial_seed_threshold
-    explicit GroundSegmenter(std::uint32_t number_of_iterations = 3, std::uint32_t number_of_planar_partitions = 1,
-                             std::uint32_t number_of_lowest_point_representative_estimators = 400,
+    explicit GroundSegmenter(std::uint32_t number_of_iterations = 3, std::uint32_t number_of_planar_partitions = 2,
+                             std::uint32_t number_of_lowest_point_representative_estimators = 5000,
                              float sensor_height = 1.73, float distance_threshold = 0.3,
                              float initial_seed_threshold = 0.6);
 

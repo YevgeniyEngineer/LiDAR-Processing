@@ -69,8 +69,7 @@ void GroundSegmenter::formPlanarPartitions(const pcl::PointCloud<pcl::PointXYZ> 
         for (std::size_t sorted_idx_no = idx_low; sorted_idx_no < idx_high; ++sorted_idx_no)
         {
             const auto &cloud_point = cloud_points[sorted_indices[sorted_idx_no]];
-            pcl::PointXYZ point_cache{cloud_point.x, cloud_point.y, cloud_point.z};
-            cloud_segment->points.push_back(std::move(point_cache));
+            cloud_segment->points.push_back(pcl::PointXYZ{cloud_point.x, cloud_point.y, cloud_point.z});
         }
 
         cloud_segments.push_back(std::move(*cloud_segment));
@@ -84,33 +83,34 @@ void GroundSegmenter::formPlanarPartitions(const pcl::PointCloud<pcl::PointXYZ> 
 
 GroundPlane estimatePlane(const Eigen::MatrixXf &points_xyz)
 {
+    // Eigendecomposition of the covariance matrix - returns ordered eigenvalues in the increasing order
+    // Second column of V matrix from SVD decomposition corresponds to normal vector to fitted plane
+    // See: https://eigen.tuxfamily.org/dox/group__DenseDecompositionBenchmark.html
+    // See: https://eigen.tuxfamily.org/dox-devel/group__TopicLinearAlgebraDecompositions.html#note3
+
     const auto number_of_points = points_xyz.rows();
     if (number_of_points < 3)
     {
         throw std::runtime_error("Cannot estimate plane parameters for less than three points");
     }
 
-    Eigen::RowVector3f centroid = points_xyz.colwise().mean();              // 1 x 3
-    Eigen::MatrixX3f points_xyz_centered = points_xyz.rowwise() - centroid; // N x 3
-    Eigen::Matrix3f covariance_matrix =
-        (points_xyz_centered.transpose() * points_xyz_centered) / static_cast<float>(number_of_points - 1); // 3 x 3
+    // Compute centroid of the points
+    Eigen::RowVector3f centroid = points_xyz.colwise().mean();
 
-    // Eigendecomposition of the covariance matrix - returns ordered eigenvalues in the increasing order
+    // Compute the deviation of points from the centroid
+    Eigen::MatrixXf deviation = points_xyz.rowwise() - centroid;
 
-    // See: https://eigen.tuxfamily.org/dox/group__DenseDecompositionBenchmark.html
-    // See: https://eigen.tuxfamily.org/dox-devel/group__TopicLinearAlgebraDecompositions.html#note3
-    Eigen::JacobiSVD<Eigen::MatrixXf> svd_solver(covariance_matrix, Eigen::DecompositionOptions::ComputeThinU);
-    // Eigen::BDCSVD<Eigen::MatrixXf> svd_solver(covariance_matrix, Eigen::DecompositionOptions::ComputeThinU);
+    // Compute the SVD of the deviation matrix
+    Eigen::JacobiSVD<Eigen::MatrixXf> svd(deviation, Eigen::ComputeFullV);
 
-    // Use least singular vector as normal
-    // Column two contains normal to the plane
-    // See https://stackoverflow.com/questions/39370370/eigen-and-svd-to-find-best-fitting-plane-given-a-set-of-points
-    Eigen::Vector3f normal_coefficients = svd_solver.matrixU().col(2);
+    // Find the last column of V matrix
+    Eigen::Vector3f normal = svd.matrixV().col(2);
 
-    const float &d = -(centroid * normal_coefficients)(0, 0);
-    const float &a = normal_coefficients(0, 0);
-    const float &b = normal_coefficients(1, 0);
-    const float &c = normal_coefficients(2, 0);
+    // Get plane parameters
+    float a = normal(0);
+    float b = normal(1);
+    float c = normal(2);
+    float d = -normal.dot(centroid);
 
 #if DEBUG
     std::cout << "Planar coefficients (a, b, c, d) = (" << a << ", " << b << ", " << c << ", " << d << ")" << std::endl;

@@ -10,6 +10,8 @@ Lidar processing pipeline based on ROS2 Humble that consists of:
 
 ### Build and Launch Nodes
 
+Update submodules: `git pull & git submodule update --init --recursive`
+
 Build: `./build.sh`
 
 Launch processing nodes and the visualizer: `./launch.sh`
