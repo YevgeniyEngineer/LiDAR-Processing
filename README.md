@@ -26,9 +26,9 @@ The algorithm is based on the paper ["Fast Segmentation of 3D Point Clouds: A Pa
 
 ### Obstacle Point Cloud Clusters
 
-Fast Euclidean Clustering (FEC) is a hierarchical clustering algorithm that starts by dividing the data into small subsets, and then merges these subsets to form larger clusters. It uses a threshold distance to determine whether two subsets should be merged or not. 
+[Fast Euclidean Clustering](https://arxiv.org/abs/2208.07678) (FEC) is a hierarchical clustering algorithm that starts by dividing the data into small subsets, and then merges these subsets to form larger clusters. It uses a threshold distance to determine whether two subsets should be merged or not. 
 
-DBSCAN is a density-based clustering algorithm that groups together data points that are close to each other and have high density. It defines clusters as regions of high density separated by regions of low density. DBSCAN is more flexible than FEC because it can identify clusters of arbitrary shapes and sizes, and it can handle datasets with noise and outliers. Typically, you will observe more granular clusters when using DBSCAN approach compared to FEC.
+[DBSCAN](https://en.wikipedia.org/wiki/DBSCAN) is a density-based clustering algorithm that groups together data points that are close to each other and have high density. It defines clusters as regions of high density separated by regions of low density. DBSCAN is more flexible than FEC because it can identify clusters of arbitrary shapes and sizes, and it can handle datasets with noise and outliers. Typically, you will observe more granular clusters when using DBSCAN approach compared to FEC.
 
 ![image3](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/euclidean_clustering.png)
 
