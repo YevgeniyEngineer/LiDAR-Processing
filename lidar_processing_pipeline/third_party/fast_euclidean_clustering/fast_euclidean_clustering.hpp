@@ -143,7 +143,7 @@ template <typename PointT> class FastEuclideanClustering : public pcl::PCLBase<P
 
         {
             pcl::index_t label = 0;
-            for (auto index : *indices_)
+            for (const auto index : *indices_)
             {
                 if (removed[index])
                 {
@@ -155,7 +155,7 @@ template <typename PointT> class FastEuclideanClustering : public pcl::PCLBase<P
                 queue.push(index);
                 while (!queue.empty())
                 {
-                    auto p = queue.front();
+                    const auto p = queue.front();
                     queue.pop();
                     if (removed[p])
                     {
@@ -166,8 +166,8 @@ template <typename PointT> class FastEuclideanClustering : public pcl::PCLBase<P
 
                     for (std::size_t i = 0; i < nn_indices.size(); ++i)
                     {
-                        auto q = nn_indices[i];
-                        auto q_label = labels[q];
+                        const auto q = nn_indices[i];
+                        const auto q_label = labels[q];
 
                         if (q_label != pcl::UNAVAILABLE && q_label != label)
                         {
@@ -198,20 +198,17 @@ template <typename PointT> class FastEuclideanClustering : public pcl::PCLBase<P
         }
 
         // Merge labels.
-
         std::vector<pcl::index_t> label_map(boost::num_vertices(g));
-        auto num_components = boost::connected_components(g, label_map.data());
+        const auto num_components = boost::connected_components(g, label_map.data());
         clusters.resize(num_components);
 
-        for (auto index : *indices_)
+        for (const auto index : *indices_)
         {
-            auto label = labels[index];
-            auto new_label = label_map[label];
-            clusters[new_label].indices.push_back(index);
+            clusters[label_map[labels[index]]].indices.push_back(index);
         }
 
         // Remove small clusters.
-        auto read = clusters.begin();
+        auto read = clusters.cbegin();
         auto write = clusters.begin();
         for (; read != clusters.end(); ++read)
         {

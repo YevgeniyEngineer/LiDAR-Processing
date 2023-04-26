@@ -32,6 +32,10 @@ The algorithm is based on the paper ["Fast Segmentation of 3D Point Clouds: A Pa
 
 ![image3](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/euclidean_clustering.png)
 
+![image4](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/euclidean_clustering_2.png)
+
+![image5](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/dbscan_clustering.png)
+
 ### Convex Simplification
 
 In order to simplify dense clusters formed by Fast Euclidean Clustering (FEC) or DBSCAN, currently the pipeline utilizes Convex Hull simplification algorithms based on either [Chan's Algorithm](https://en.wikipedia.org/wiki/Chan%27s_algorithm) that uses Graham Scan to form initial simplification contours, followed by Jarvis March that merges disconnected convex hull components into a larger convex hull, if the number of points is large, or relies purely on [Graham Scan](https://en.wikipedia.org/wiki/Graham_scan) if the number of points is relatively small. The threshold value is based on imperative observations.
@@ -40,10 +44,10 @@ In order to simplify dense clusters formed by Fast Euclidean Clustering (FEC) or
 
 The below image demonstrates polygonization results formed from Fast Euclidean Clustering as a preprocessing method for cluster formation.
 
-![image4](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/polygonization.png)
+![image6](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/polygonization.png)
 
 #### Convex Simplification of Obstacle Point Cloud Clusters (DBSCAN)
 
 The below image demonstrates polygonization results formed from DBSCAN as a preprocessing method for cluster formation.
 
-![image4](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/polygonization_dbscan.png)
+![image7](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/polygonization_dbscan.png)

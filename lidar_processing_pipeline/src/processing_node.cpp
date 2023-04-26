@@ -68,6 +68,9 @@ class ProcessingNode : public rclcpp::Node
         // Publisher nodes
         publisher_ground_cloud_ = this->create_publisher<PointCloud2>("ground_pointcloud", qos);
         publisher_obstacle_cloud_ = this->create_publisher<PointCloud2>("obstacle_pointcloud", qos);
+
+        publisher_obstacle_clustering_cloud_ = this->create_publisher<PointCloud2>("clustered_pointcloud", qos);
+
         publisher_obstacle_convex_hulls_ = this->create_publisher<MarkerArray>("convex_polygonization", qos);
     }
 
@@ -97,8 +100,8 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     auto ground_segmenter = std::make_unique<GroundSegmenter>();
     auto obstacle_clusterer = std::make_unique<ObstacleClusterer>();
 
-    obstacle_clusterer->setNeighbourRadiusThreshold(0.5);
-    obstacle_clusterer->setMinClusterSize(10);
+    obstacle_clusterer->setNeighbourRadiusThreshold(0.7);
+    obstacle_clusterer->setMinClusterSize(5);
     obstacle_clusterer->setClusteringAlgorithm(ClusteringAlgorithm::DBSCAN);
 
     // Convert PointCloud2 to pcl::PointCloud<pcl::PointXYZI>
@@ -169,7 +172,24 @@ void ProcessingNode::process(const PointCloud2 &input_message)
         std::cout << "No obstacle points!" << std::endl;
     }
 
-    // Convert to ROS2 format and publish (obstacle clustering - polygonization)
+    // Convert to ROS2 format and publish (clustering)
+    if (!clustered_obstacle_cloud.empty())
+    {
+        auto output_clustered_obstacle_message = std::make_unique<PointCloud2>();
+        output_clustered_obstacle_message->header = input_message.header;
+        output_clustered_obstacle_message->is_bigendian = input_message.is_bigendian;
+
+        // Convert to colorized point cloud
+        auto colorized_cloud = convertClusteredCloudToColorizedCloud(clustered_obstacle_cloud);
+
+        // Convert colorized cloud to PointCloud2
+        convertPCLToPointCloud2(colorized_cloud, *output_clustered_obstacle_message);
+
+        // Publish colorized clustered cloud
+        publisher_obstacle_clustering_cloud_->publish(*output_clustered_obstacle_message);
+    }
+
+    // Convert to ROS2 format and publish (polygonization)
     if (!convex_hulls.empty())
     {
         auto output_convex_polygonization_message = std::make_unique<MarkerArray>();

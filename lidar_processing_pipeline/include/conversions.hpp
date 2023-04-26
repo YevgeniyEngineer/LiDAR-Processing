@@ -6,6 +6,7 @@
 
 // STL
 #include <cstdint>
+#include <cstdlib> // for std::rand()
 #include <cstring>
 #include <string>
 #include <vector>
@@ -51,6 +52,72 @@ void convertPointCloud2ToPCL(const sensor_msgs::msg::PointCloud2 &cloud_ros, pcl
         cloud_pcl.points[i].z = *iter_z;
         cloud_pcl.points[i].intensity = *iter_intensity;
     }
+}
+
+// Convert clouds
+pcl::PointCloud<pcl::PointXYZRGB> convertClusteredCloudToColorizedCloud(
+    const std::vector<pcl::PointCloud<pcl::PointXYZ>> &clustered_cloud)
+{
+    pcl::PointCloud<pcl::PointXYZRGB> colorized_cloud{};
+
+    // Iterate through each cluster in the input vector
+    for (const auto &cluster : clustered_cloud)
+    {
+        // Generate random RGB values for the current cluster
+        std::uint8_t r = static_cast<std::uint8_t>(std::rand() % 256);
+        std::uint8_t g = static_cast<std::uint8_t>(std::rand() % 256);
+        std::uint8_t b = static_cast<std::uint8_t>(std::rand() % 256);
+        std::uint32_t rgb =
+            (static_cast<std::uint32_t>(r) << 16 | static_cast<std::uint32_t>(g) << 8 | static_cast<std::uint32_t>(b));
+
+        // Iterate through each point in the current cluster
+        for (const auto &point : cluster)
+        {
+
+            // Create a new PointXYZRGB point
+            pcl::PointXYZRGB colored_point;
+            colored_point.x = point.x;
+            colored_point.y = point.y;
+            colored_point.z = point.z;
+            colored_point.rgb = *reinterpret_cast<float *>(&rgb);
+
+            // Add the colored point to the colorized_cloud
+            colorized_cloud.push_back(colored_point);
+        }
+    }
+
+    return colorized_cloud;
+}
+
+// Convert from pcl::PointCloud<pcl::PointXYZRGB> to PointCloud2
+void convertPCLToPointCloud2(const pcl::PointCloud<pcl::PointXYZRGB> &cloud_pcl,
+                             sensor_msgs::msg::PointCloud2 &cloud_ros)
+{
+    cloud_ros.is_dense = cloud_pcl.is_dense;
+    cloud_ros.height = cloud_pcl.height;
+    cloud_ros.width = cloud_pcl.width;
+    cloud_ros.point_step = sizeof(pcl::PointXYZRGB);
+
+    std::vector<std::tuple<std::string, std::uint32_t, std::uint8_t, std::uint32_t>> fields = {
+        {"x", offsetof(pcl::PointXYZRGB, x), PointFieldTypes::FLOAT32, 1},
+        {"y", offsetof(pcl::PointXYZRGB, y), PointFieldTypes::FLOAT32, 1},
+        {"z", offsetof(pcl::PointXYZRGB, z), PointFieldTypes::FLOAT32, 1},
+        {"rgb", offsetof(pcl::PointXYZRGB, rgb), PointFieldTypes::FLOAT32, 1}};
+
+    for (const auto &field : fields)
+    {
+        sensor_msgs::msg::PointField field_cache;
+        field_cache.name = std::get<0>(field);
+        field_cache.offset = std::get<1>(field);
+        field_cache.datatype = std::get<2>(field);
+        field_cache.count = std::get<3>(field);
+        cloud_ros.fields.emplace_back(std::move(field_cache));
+    }
+
+    const std::size_t byte_size = sizeof(pcl::PointXYZRGB) * cloud_pcl.size();
+    cloud_ros.data.clear();
+    cloud_ros.data.resize(byte_size);
+    std::memcpy(cloud_ros.data.data(), &cloud_pcl.at(0), byte_size);
 }
 
 // Does not set header and endianess!
