@@ -30,15 +30,13 @@ The algorithm is based on the paper ["Fast Segmentation of 3D Point Clouds: A Pa
 
 [DBSCAN](https://en.wikipedia.org/wiki/DBSCAN) is a density-based clustering algorithm that groups together data points that are close to each other and have high density. It defines clusters as regions of high density separated by regions of low density. DBSCAN is more flexible than FEC because it can identify clusters of arbitrary shapes and sizes, and it can handle datasets with noise and outliers. Typically, you will observe more granular clusters when using DBSCAN approach compared to FEC.
 
-![image3](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/euclidean_clustering.png)
-
 #### Euclidean Clustering
 
-![image4](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/euclidean_clustering_2.png)
+![image3](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/euclidean_clustering_2.png)
 
 #### DBSCAN
 
-![image5](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/dbscan_clustering.png)
+![image4](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/dbscan_clustering.png)
 
 ### Convex Simplification
 
@@ -48,10 +46,10 @@ In order to simplify dense clusters formed by Fast Euclidean Clustering (FEC) or
 
 The below image demonstrates polygonization results formed from Fast Euclidean Clustering as a preprocessing method for cluster formation.
 
-![image6](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/polygonization.png)
+![image5](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/polygonization.png)
 
 #### Convex Simplification of Obstacle Point Cloud Clusters (DBSCAN)
 
 The below image demonstrates polygonization results formed from DBSCAN as a preprocessing method for cluster formation.
 
-![image7](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/polygonization_dbscan.png)
+![image6](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/polygonization_dbscan.png)
