@@ -32,7 +32,11 @@ The algorithm is based on the paper ["Fast Segmentation of 3D Point Clouds: A Pa
 
 ![image3](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/euclidean_clustering.png)
 
+#### Euclidean Clustering
+
 ![image4](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/euclidean_clustering_2.png)
+
+### DBSCAN
 
 ![image5](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/dbscan_clustering.png)
 
