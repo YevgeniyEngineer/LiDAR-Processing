@@ -56,6 +56,10 @@ void convertPointXYZTypeToMarkerArray(const std::vector<std::vector<PointT>> &hu
     for (int hull_no = 0; hull_no < hull_cluster_points.size(); ++hull_no)
     {
         const auto &hull_points = hull_cluster_points[hull_no];
+        if (hull_points.empty())
+        {
+            continue;
+        }
         visualization_msgs::msg::Marker marker;
         marker.lifetime.sec = 0;
         marker.lifetime.nanosec = 150'000'000;
@@ -77,7 +81,8 @@ void convertPointXYZTypeToMarkerArray(const std::vector<std::vector<PointT>> &hu
         marker.color.r = 1.0f;
         marker.color.g = 0.0f;
         marker.color.b = 1.0f;
-        marker.points.reserve(hull_points.size());
+        // To ensure loop closure
+        marker.points.reserve(hull_points.size() + 1);
         for (const auto &point : hull_points)
         {
             geometry_msgs::msg::Point point_cache;
@@ -86,6 +91,7 @@ void convertPointXYZTypeToMarkerArray(const std::vector<std::vector<PointT>> &hu
             point_cache.z = 0.0;
             marker.points.emplace_back(std::move(point_cache));
         }
+        marker.points.push_back(marker.points[0]);
         marker_array.markers.emplace_back(std::move(marker));
     }
 }
