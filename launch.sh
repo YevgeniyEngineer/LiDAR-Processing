@@ -3,7 +3,7 @@
 # Make directory
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 BUILD_DIR="${SCRIPT_DIR}/build"
-LAUCH_DIR="${BUILD_DIR}/lidar_processing_pipeline"
+LAUCH_DIR="${BUILD_DIR}"
 
 # Launch
 unset GTK_PATH
