@@ -19,6 +19,7 @@ find_package(visualization_msgs REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 
 add_subdirectory(./DBSCAN)
+add_subdirectory(./Fast-Euclidean-Clustering)
 
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
@@ -48,7 +49,6 @@ target_include_directories(processing_node
     $<INSTALL_INTERFACE:include>
     PRIVATE
     ${rclcpp_INCLUDE_DIRS}
-    third_party/fast_euclidean_clustering
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 ament_target_dependencies(processing_node
@@ -64,4 +64,5 @@ target_link_libraries(processing_node
     ${PCL_LIBRARIES}
     ${rclcpp_LIBRARIES}
     dbscan::dbscan
+    fast_euclidean_clustering::fast_euclidean_clustering
 )

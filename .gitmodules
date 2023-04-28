@@ -1,3 +1,6 @@
 [submodule "lidar_processing_pipeline/DBSCAN"]
 	path = lidar_processing_pipeline/DBSCAN
 	url = https://github.com/YevgeniyEngineer/DBSCAN.git
+[submodule "lidar_processing_pipeline/Fast-Euclidean-Clustering"]
+	path = lidar_processing_pipeline/Fast-Euclidean-Clustering
+	url = https://github.com/YevgeniyEngineer/Fast-Euclidean-Clustering.git
