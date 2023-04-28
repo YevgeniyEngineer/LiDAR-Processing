@@ -100,8 +100,8 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     auto ground_segmenter = std::make_unique<GroundSegmenter>();
     auto obstacle_clusterer = std::make_unique<ObstacleClusterer>();
 
-    obstacle_clusterer->setNeighbourRadiusThreshold(0.5);
-    obstacle_clusterer->setMinClusterSize(10);
+    obstacle_clusterer->setNeighbourRadiusThreshold(0.7);
+    obstacle_clusterer->setMinClusterSize(5);
     obstacle_clusterer->setClusteringAlgorithm(ClusteringAlgorithm::FAST_EUCLIDEAN_CLUSTERING);
 
     // Convert PointCloud2 to pcl::PointCloud<pcl::PointXYZI>
