@@ -6,7 +6,7 @@
 #include "ground_segmentation.hpp"
 #include "internal_types.hpp"
 #include "obstacle_clustering.hpp"
-#include "obstacle_simplification.hpp"
+#include "polygon_simplification.hpp"
 
 // STL
 #include <chrono>

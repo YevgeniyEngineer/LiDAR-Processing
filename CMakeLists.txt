@@ -44,6 +44,7 @@ add_executable(processing_node
     src/processing_node.cpp
     src/ground_segmentation.cpp
     src/conversions.cpp
+    src/polygon_simplification.cpp
 )
 target_include_directories(processing_node
     PUBLIC

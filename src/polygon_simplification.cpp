@@ -1,26 +1,11 @@
-#ifndef OBSTACLE_SIMPLIFICATION
-#define OBSTACLE_SIMPLIFICATION
-
-// Internal
-#include "convex_hull.hpp"
-#include "geometric_operations.hpp" // constructGrahamAndrewConvexHull
-#include "internal_types.hpp"
-
-// STL
-#include <cstdint>  // std::size_t
-#include <iostream> // std::cout
-#include <vector>   // std::vector
-
-// PCL
-#include <pcl/point_cloud.h> // pcl::PointCloud
-#include <pcl/point_types.h> // pcl::PointXYZ
+#include "polygon_simplification.hpp"
 
 #define DEBUG_CONVEX_POLYGONIZATION 0
 
 namespace lidar_processing
 {
-inline void findOrderedConvexOutline(const std::vector<pcl::PointCloud<pcl::PointXYZ>> &clustered_obstacle_cloud,
-                                     std::vector<std::vector<geom::Point<float>>> &convex_hulls)
+void findOrderedConvexOutline(const std::vector<pcl::PointCloud<pcl::PointXYZ>> &clustered_obstacle_cloud,
+                              std::vector<std::vector<geom::Point<float>>> &convex_hulls)
 {
     using PointType = geom::Point<float>;
 
@@ -66,5 +51,3 @@ inline void findOrderedConvexOutline(const std::vector<pcl::PointCloud<pcl::Poin
     }
 }
 } // namespace lidar_processing
-
-#endif // OBSTACLE_SIMPLIFICATION
