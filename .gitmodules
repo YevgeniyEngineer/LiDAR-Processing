@@ -1,9 +1,9 @@
-[submodule "lidar_processing_pipeline/DBSCAN"]
-	path = lidar_processing_pipeline/DBSCAN
-	url = https://github.com/YevgeniyEngineer/DBSCAN.git
-[submodule "lidar_processing_pipeline/Fast-Euclidean-Clustering"]
-	path = lidar_processing_pipeline/Fast-Euclidean-Clustering
+[submodule "Fast-Euclidean-Clustering"]
+	path = Fast-Euclidean-Clustering
 	url = https://github.com/YevgeniyEngineer/Fast-Euclidean-Clustering.git
-[submodule "lidar_processing_pipeline/Convex-Hull"]
-	path = lidar_processing_pipeline/Convex-Hull
+[submodule "Convex-Hull"]
+	path = Convex-Hull
 	url = https://github.com/YevgeniyEngineer/Convex-Hull.git
+[submodule "DBSCAN"]
+	path = DBSCAN
+	url = https://github.com/YevgeniyEngineer/DBSCAN.git
