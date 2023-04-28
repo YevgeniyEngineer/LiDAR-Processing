@@ -4,3 +4,6 @@
 [submodule "lidar_processing_pipeline/Fast-Euclidean-Clustering"]
 	path = lidar_processing_pipeline/Fast-Euclidean-Clustering
 	url = https://github.com/YevgeniyEngineer/Fast-Euclidean-Clustering.git
+[submodule "lidar_processing_pipeline/Convex-Hull"]
+	path = lidar_processing_pipeline/Convex-Hull
+	url = https://github.com/YevgeniyEngineer/Convex-Hull.git

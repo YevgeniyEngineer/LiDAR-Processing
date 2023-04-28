@@ -2,6 +2,7 @@
 #define OBSTACLE_SIMPLIFICATION
 
 // Internal
+#include "convex_hull.hpp"
 #include "geometric_operations.hpp" // constructGrahamAndrewConvexHull
 #include "internal_types.hpp"
 
@@ -19,51 +20,49 @@
 namespace lidar_processing
 {
 inline void findOrderedConvexOutline(const std::vector<pcl::PointCloud<pcl::PointXYZ>> &clustered_obstacle_cloud,
-                                     std::vector<std::vector<PointXY>> &convex_hulls)
+                                     std::vector<std::vector<geom::Point<float>>> &convex_hulls)
 {
+    using PointType = geom::Point<float>;
+
+    // Clear old message and reserve space
     convex_hulls.clear();
     convex_hulls.reserve(clustered_obstacle_cloud.size());
 
-    for (std::size_t cluster_no = 0; cluster_no < clustered_obstacle_cloud.size(); ++cluster_no)
+    // Copy data into suitable format
+    for (const auto &cluster : clustered_obstacle_cloud)
     {
-        const auto &cluster = clustered_obstacle_cloud[cluster_no];
-        std::vector<PointXY> cluster_points;
-        cluster_points.reserve(cluster.points.size());
+        // Copy points from current cluster
+        std::vector<PointType> cluster_points;
+        cluster_points.reserve(cluster.size());
         for (const auto &point : cluster.points)
         {
-            PointXY point_cache;
-            point_cache.x = point.x;
-            point_cache.y = point.y;
-            cluster_points.emplace_back(std::move(point_cache));
+            cluster_points.push_back(PointType(point.x, point.y));
         }
 
-        std::vector<PointXY> hull_points;
+        // Construct convex hull
+        std::vector<std::int32_t> hull_indices;
         if (cluster_points.size() > 1000)
         {
-#if DEBUG_CONVEX_POLYGONIZATION
-            std::cout << "Constructing convex hull using Chan's algorithm from " << cluster_points.size() << " points"
-                      << std::endl;
-#endif
-            constructChanConvexHull(std::move(cluster_points), hull_points);
+            hull_indices = std::move(geom::constructConvexHull(cluster_points, geom::ConvexHullAlgorithm::CHAN,
+                                                               geom::Orientation::COUNTERCLOCKWISE));
         }
         else
         {
-#if DEBUG_CONVEX_POLYGONIZATION
-            std::cout << "Constructing convex hull using Andrew's algorithm from " << cluster_points.size() << " points"
-                      << std::endl;
-#endif
-            constructGrahamAndrewConvexHull(std::move(cluster_points), hull_points);
+            hull_indices = std::move(geom::constructConvexHull(
+                cluster_points, geom::ConvexHullAlgorithm::ANDREW_MONOTONE_CHAIN, geom::Orientation::COUNTERCLOCKWISE));
         }
 
-        // Close the hull
-        if (!hull_points.empty())
+        std::vector<PointType> hull_points;
+        for (const auto index : hull_indices)
         {
-#if DEBUG_CONVEX_POLYGONIZATION
-            std::cout << "Convex hull contains " << hull_points.size() << " points." << std::endl;
-#endif
-            hull_points.emplace_back(hull_points[0]);
-            convex_hulls.emplace_back(std::move(hull_points));
+            hull_points.push_back(cluster_points[index]);
         }
+
+#if DEBUG_CONVEX_POLYGONIZATION
+        std::cout << "Convex hull contains " << hull_points.size() << " points." << std::endl;
+#endif
+
+        convex_hulls.push_back(std::move(hull_points));
     }
 }
 } // namespace lidar_processing
