@@ -13,6 +13,6 @@ cd "${LAUCH_DIR}"
 ./processing_node &
 
 cd "${SCRIPT_DIR}"
-rviz2 -d "rviz2_config/rviz2_config.rviz" &
+rviz2 -d "visualisation/rviz2_config.rviz" &
 
 wait
