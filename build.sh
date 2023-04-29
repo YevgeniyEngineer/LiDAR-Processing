@@ -11,4 +11,4 @@ fi
 # Build
 cd "${BUILD_DIR}"
 cmake -DCMAKE_BUILD_TYPE=Release .. 
-cmake --build . --target all --config Release
+cmake --build . -j8 --target all --config Release
