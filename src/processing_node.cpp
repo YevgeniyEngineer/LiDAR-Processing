@@ -98,13 +98,17 @@ class ProcessingNode : public rclcpp::Node
 
 void ProcessingNode::process(const PointCloud2 &input_message)
 {
+    // Clustering parameters
+    static constexpr float neighbour_radius_threshold = 0.7;
+    static constexpr float cluster_quality = 0.5;
+    static constexpr std::uint32_t min_cluster_size = 5;
+    static constexpr std::uint32_t max_cluster_size = std::numeric_limits<std::uint32_t>::max();
+    ClusteringAlgorithm clustering_algorithm = ClusteringAlgorithm::FAST_EUCLIDEAN_CLUSTERING;
+
     // Instantiate processing objects
     auto ground_segmenter = std::make_unique<GroundSegmenter>();
-    auto obstacle_clusterer = std::make_unique<ObstacleClusterer>();
-
-    obstacle_clusterer->setNeighbourRadiusThreshold(0.7);
-    obstacle_clusterer->setMinClusterSize(5);
-    obstacle_clusterer->setClusteringAlgorithm(ClusteringAlgorithm::FAST_EUCLIDEAN_CLUSTERING);
+    auto obstacle_clusterer = std::make_unique<ObstacleClusterer>(
+        neighbour_radius_threshold, cluster_quality, min_cluster_size, max_cluster_size, clustering_algorithm);
 
     // Convert PointCloud2 to pcl::PointCloud<pcl::PointXYZI>
     auto point_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZI>>();

@@ -43,6 +43,7 @@ target_link_libraries(point_cloud_publisher_node
 add_executable(processing_node
     src/processing_node.cpp
     src/ground_segmentation.cpp
+    src/obstacle_clustering.cpp
     src/conversions.cpp
     src/polygon_simplification.cpp
 )
