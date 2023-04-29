@@ -101,7 +101,7 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     // Clustering parameters
     static constexpr float neighbour_radius_threshold = 0.7;
     static constexpr float cluster_quality = 0.5;
-    static constexpr std::uint32_t min_cluster_size = 5;
+    static constexpr std::uint32_t min_cluster_size = 2;
     static constexpr std::uint32_t max_cluster_size = std::numeric_limits<std::uint32_t>::max();
     ClusteringAlgorithm clustering_algorithm = ClusteringAlgorithm::FAST_EUCLIDEAN_CLUSTERING;
 

@@ -1,6 +1,6 @@
 #include "obstacle_clustering.hpp"
 
-#include "dbscan.hpp"
+#include "dbscan_clustering.hpp"
 #include "fec_clustering.hpp"
 
 namespace lidar_processing
@@ -33,9 +33,9 @@ void ObstacleClusterer::clusterObstacles(const pcl::PointCloud<pcl::PointXYZRGBL
 
     if (clustering_algorithm_ == ClusteringAlgorithm::DBSCAN)
     {
-        using DBSCANPoint = clustering::Point<CoordinateType, 3>;
-        using DBSCANPointCloud = clustering::PointCloud<CoordinateType, 3>;
-        using DBSCANClustering = clustering::dbscan::DBSCAN<CoordinateType, 3>;
+        using DBSCANPoint = clustering::DBSCANPoint<CoordinateType, 3>;
+        using DBSCANPointCloud = clustering::DBSCANPointCloud<CoordinateType, 3>;
+        using DBSCANClustering = clustering::DBSCANClustering<CoordinateType, 3>;
 
         auto point_cloud = std::make_unique<DBSCANPointCloud>();
         for (const auto &point : obstacle_cloud.points)
@@ -43,7 +43,8 @@ void ObstacleClusterer::clusterObstacles(const pcl::PointCloud<pcl::PointXYZRGBL
             point_cloud->points.push_back(DBSCANPoint{point.x, point.y, point.z});
         }
 
-        auto dbscan = std::make_unique<DBSCANClustering>(neighbour_radius_threshold_, min_cluster_size_, *point_cloud);
+        auto dbscan = std::make_unique<DBSCANClustering>(*point_cloud, neighbour_radius_threshold_, min_cluster_size_,
+                                                         max_cluster_size_);
 
         dbscan->formClusters();
 
@@ -55,7 +56,7 @@ void ObstacleClusterer::clusterObstacles(const pcl::PointCloud<pcl::PointXYZRGBL
 
             for (const auto &[cluster_label, cluster_indices] : clusters)
             {
-                if (cluster_label == clustering::dbscan::labels::NOISE)
+                if (cluster_label == clustering::labels::NOISE)
                 {
                     continue;
                 }
