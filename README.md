@@ -20,11 +20,11 @@ Launch processing nodes and the visualizer: `./launch.sh`
 After launch, the RViz window should open and you should see the node publishing and displaying information:
 
 ```bash
-Convex polygon simplification time: 0.00399037
 Ground segmentation time: 0.0129058
 Ground Pts: 62809 | Obstacle Pts: 60427
 Obstacle clustering time: 0.0149482
 Number of clusters: 370
+Convex polygon simplification time: 0.00399037
 ```
 
 ### Point Cloud Colored by Intensity
