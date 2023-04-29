@@ -7,3 +7,6 @@
 [submodule "DBSCAN"]
 	path = DBSCAN
 	url = https://github.com/YevgeniyEngineer/DBSCAN.git
+[submodule "KDTree"]
+	path = KDTree
+	url = https://github.com/YevgeniyEngineer/KDTree.git
