@@ -91,11 +91,8 @@ void ObstacleClusterer::clusterObstacles(const pcl::PointCloud<pcl::PointXYZRGBL
             point_cloud->push_back(FECPoint{point.x, point.y, point.z});
         }
 
-        auto fec_clustering = std::make_unique<FECClustering>(*point_cloud);
-        fec_clustering->setQuality(cluster_quality_);
-        fec_clustering->setMinClusterSize(min_cluster_size_);
-        fec_clustering->setMaxClusterSize(max_cluster_size_);
-        fec_clustering->setClusterTolerance(neighbour_radius_threshold_);
+        auto fec_clustering = std::make_unique<FECClustering>(*point_cloud, neighbour_radius_threshold_,
+                                                              min_cluster_size_, max_cluster_size_, cluster_quality_);
 
         fec_clustering->formClusters();
 
