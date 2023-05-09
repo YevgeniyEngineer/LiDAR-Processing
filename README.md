@@ -66,9 +66,8 @@ The below image demonstrates polygonization results formed from DBSCAN as a prep
 
 ![image6](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/polygonization_dbscan.png)
 
-### Dynamic Example with Concave Hulling
+### Dynamic Example
 
-The below gif image demonstrates a complete pipeline, including ground segmentation, fast euclidean clustering and concave hull polygonization.
+The below gif image demonstrates the video recording of the current pipeline, consisting of ground segmentation, fast euclidean clustering and concave hull polygonization.
 
 ![complete_pipeline](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/example.gif)
-
