@@ -66,6 +66,10 @@ The below image demonstrates polygonization results formed from DBSCAN as a prep
 
 ![image6](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/polygonization_dbscan.png)
 
+### Concave Simplification
+
+An alternative to convex hull formation is concave simplification. The algorithm is based on [Duckham et.al "Efficient generation of simple polygons for characterizing the shape of a set of points in the plane"](https://www.sciencedirect.com/science/article/abs/pii/S0031320308001180). In brief, the algorithm uses Delaunay triangulation as a starting point of the refinement of the convex boundary.
+
 ### Dynamic Example
 
 The below gif image demonstrates the video recording of the current pipeline, consisting of ground segmentation, fast euclidean clustering and concave hull polygonization.
