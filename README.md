@@ -65,3 +65,10 @@ The below image demonstrates polygonization results formed from Fast Euclidean C
 The below image demonstrates polygonization results formed from DBSCAN as a preprocessing method for cluster formation.
 
 ![image6](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/polygonization_dbscan.png)
+
+### Dynamic Example with Concave Hulling
+
+The below gif image demonstrates a complete pipeline, including ground segmentation, fast euclidean clustering and concave hull polygonization.
+
+![complete_pipeline](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/example.gif)
+
