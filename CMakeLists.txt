@@ -21,6 +21,7 @@ find_package(builtin_interfaces REQUIRED)
 add_subdirectory(./DBSCAN)
 add_subdirectory(./Fast-Euclidean-Clustering)
 add_subdirectory(./Convex-Hull)
+add_subdirectory(./Concave-Hull)
 
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
@@ -70,4 +71,5 @@ target_link_libraries(processing_node
     dbscan::dbscan
     fast_euclidean_clustering::fast_euclidean_clustering
     convex_hull::convex_hull
+    concave_hull::concave_hull
 )

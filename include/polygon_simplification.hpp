@@ -15,8 +15,11 @@
 
 namespace lidar_processing
 {
-void findOrderedConvexOutline(const std::vector<pcl::PointCloud<pcl::PointXYZ>> &clustered_obstacle_cloud,
-                              std::vector<std::vector<geom::Point<float>>> &convex_hulls);
+void findOrderedConvexOutlines(const std::vector<pcl::PointCloud<pcl::PointXYZ>> &clustered_obstacle_cloud,
+                               std::vector<std::vector<geom::Point<float>>> &convex_hulls);
+
+void findOrderedConcaveOutlines(const std::vector<pcl::PointCloud<pcl::PointXYZ>> &clustered_obstacle_cloud,
+                                std::vector<std::vector<geom::Point<float>>> &convex_hulls);
 } // namespace lidar_processing
 
 #endif // POLYGON_SIMPLIFICATION_HPP

@@ -10,3 +10,6 @@
 [submodule "KDTree"]
 	path = KDTree
 	url = https://github.com/YevgeniyEngineer/KDTree.git
+[submodule "Concave-Hull"]
+	path = Concave-Hull
+	url = https://github.com/YevgeniyEngineer/Concave-Hull.git

@@ -143,8 +143,9 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     // Polygonization
     const auto &convex_polygon_simplification_start_time = std::chrono::high_resolution_clock::now();
 
-    std::vector<std::vector<geom::Point<float>>> convex_hulls;
-    findOrderedConvexOutline(clustered_obstacle_cloud, convex_hulls);
+    std::vector<std::vector<geom::Point<float>>> cluster_outlines;
+    // findOrderedConvexOutlines(clustered_obstacle_cloud, cluster_outlines);
+    findOrderedConcaveOutlines(clustered_obstacle_cloud, cluster_outlines);
 
     const auto &convex_polygon_simplification_end_time = std::chrono::high_resolution_clock::now();
     std::cout << "Convex polygon simplification time: "
@@ -196,10 +197,10 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     }
 
     // Convert to ROS2 format and publish (polygonization)
-    if (!convex_hulls.empty())
+    if (!cluster_outlines.empty())
     {
         auto output_convex_polygonization_message = std::make_unique<MarkerArray>();
-        convertPointXYZTypeToMarkerArray(convex_hulls, input_message.header.frame_id, input_message.header.stamp,
+        convertPointXYZTypeToMarkerArray(cluster_outlines, input_message.header.frame_id, input_message.header.stamp,
                                          *output_convex_polygonization_message);
         publisher_obstacle_convex_hulls_->publish(*output_convex_polygonization_message);
     }
