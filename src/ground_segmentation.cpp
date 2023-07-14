@@ -94,16 +94,20 @@ GroundPlane estimatePlane(const Eigen::MatrixXf &points_xyz)
         throw std::runtime_error("Cannot estimate plane parameters for less than three points");
     }
 
-    // Compute centroid of the points
-    Eigen::RowVector3f centroid = points_xyz.colwise().mean();
+    // Calculate centroid
+    Eigen::Vector3f centroid = points_xyz.colwise().mean();
 
-    // Compute the deviation of points from the centroid
-    Eigen::MatrixXf deviation = points_xyz.rowwise() - centroid;
+    // Shift the origin of the point cloud towards the centroid
+    Eigen::MatrixXf centered_points = points_xyz.rowwise() - centroid.transpose();
 
-    // Compute the SVD of the deviation matrix
-    Eigen::JacobiSVD<Eigen::MatrixXf> svd(deviation, Eigen::ComputeFullV);
+    // Compute the covariance matrix
+    Eigen::Matrix3f covariance_matrix = centered_points.transpose() * centered_points;
 
-    // Find the last column of V matrix
+    // Compute the SVD of the covariance matrix
+    Eigen::JacobiSVD<Eigen::Matrix3f> svd(covariance_matrix, Eigen::ComputeThinV);
+
+    // The normal of the plane is the unit singular vector corresponding to the smallest singular value,
+    // which is the last column in the V matrix.
     Eigen::Vector3f normal = svd.matrixV().col(2);
 
     // Get plane parameters
@@ -111,10 +115,6 @@ GroundPlane estimatePlane(const Eigen::MatrixXf &points_xyz)
     float b = normal(1);
     float c = normal(2);
     float d = -normal.dot(centroid);
-
-#if DEBUG
-    std::cout << "Planar coefficients (a, b, c, d) = (" << a << ", " << b << ", " << c << ", " << d << ")" << std::endl;
-#endif
 
     return GroundPlane(a, b, c, d);
 }
@@ -194,7 +194,7 @@ void GroundSegmenter::fitGroundPlane(const pcl::PointCloud<pcl::PointXYZ> &cloud
                                      pcl::PointCloud<pcl::PointXYZ> &ground_cloud_segment,
                                      pcl::PointCloud<pcl::PointXYZ> &obstacle_cloud_segment)
 {
-    const size_t &number_of_points = cloud_segment.points.size();
+    const std::size_t &number_of_points = cloud_segment.points.size();
     if (number_of_points == 0)
     {
         return;
@@ -202,7 +202,7 @@ void GroundSegmenter::fitGroundPlane(const pcl::PointCloud<pcl::PointXYZ> &cloud
 
     // convert input_cloud to a matrix form
     Eigen::MatrixXf points_xyz(number_of_points, 3); // N x 3
-    for (size_t i = 0; i < number_of_points; ++i)
+    for (std::size_t i = 0; i < number_of_points; ++i)
     {
         const pcl::PointXYZ &point = cloud_segment[i];
         points_xyz.row(i) << point.x, point.y, point.z;
@@ -255,11 +255,11 @@ void GroundSegmenter::fitGroundPlane(const pcl::PointCloud<pcl::PointXYZ> &cloud
         {
             if (distances_unnormalized[k] < scaled_distance_threshold)
             {
-                ground_cloud_indices.emplace_back(k);
+                ground_cloud_indices.push_back(k);
             }
             else
             {
-                obstacle_cloud_indices.emplace_back(k);
+                obstacle_cloud_indices.push_back(k);
             }
         }
     }

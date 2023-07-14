@@ -1,6 +1,9 @@
 #ifndef GROUND_SEGMENTATION
 #define GROUND_SEGMENTATION
 
+// BoundedVector
+#include "utilities/bounded_vector.hpp"
+
 // STL
 #include <algorithm>
 #include <cstdint>
@@ -156,7 +159,6 @@ class GroundSegmenter final
                                 const SegmentationLabels &segmentation_label,
                                 pcl::PointCloud<pcl::PointXYZRGBL> &segmented_cloud) const;
 
-  private:
     std::uint32_t number_of_iterations_;
     std::uint32_t number_of_planar_partitions_;
     std::uint32_t number_of_lowest_point_representative_estimators_;
