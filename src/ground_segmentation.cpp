@@ -94,17 +94,16 @@ GroundPlane estimatePlane(const Eigen::MatrixXf &points_xyz)
         throw std::runtime_error("Cannot estimate plane parameters for less than three points");
     }
 
+    // See: https://math.stackexchange.com/questions/99299/best-fitting-plane-given-a-set-of-points
+
     // Calculate centroid
-    Eigen::Vector3f centroid = points_xyz.colwise().mean();
+    Eigen::RowVector3f centroid = points_xyz.colwise().mean();
 
     // Shift the origin of the point cloud towards the centroid
-    Eigen::MatrixXf centered_points = points_xyz.rowwise() - centroid.transpose();
-
-    // Compute the covariance matrix
-    Eigen::Matrix3f covariance_matrix = centered_points.transpose() * centered_points;
+    Eigen::MatrixXf centered_points = points_xyz.rowwise() - centroid;
 
     // Compute the SVD of the covariance matrix
-    Eigen::JacobiSVD<Eigen::Matrix3f> svd(covariance_matrix, Eigen::ComputeThinV);
+    Eigen::JacobiSVD<Eigen::MatrixXf> svd(centered_points, Eigen::ComputeThinV);
 
     // The normal of the plane is the unit singular vector corresponding to the smallest singular value,
     // which is the last column in the V matrix.
