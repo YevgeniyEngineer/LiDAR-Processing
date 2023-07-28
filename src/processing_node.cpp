@@ -109,7 +109,7 @@ void ProcessingNode::process(const PointCloud2& input_message)
 {
     // Segmentation parameters
     SegmentationAlgorithm segmentation_algorithm =
-        SegmentationAlgorithm::ITERATIVE_PLANE_FITTING;
+        SegmentationAlgorithm::RANSAC;
 
     // Clustering parameters
     static constexpr float neighbour_radius_threshold = 0.7;

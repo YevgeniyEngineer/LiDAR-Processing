@@ -18,14 +18,10 @@ void segmentGroundRANSAC(const pcl::PointCloud<pcl::PointXYZI>& input_cloud,
                          pcl::PointCloud<pcl::PointXYZRGBL>& ground_cloud,
                          pcl::PointCloud<pcl::PointXYZRGBL>& obstacle_cloud,
                          float orthogonal_distance_threshold = 0.3f,
-                         float max_slope_deg = 10.0f,
-                         std::uint32_t max_iterations = 80,
                          float probability_of_success = 0.99f,
-                         float percentage_of_outliers = 0.7f,
+                         float percentage_of_outliers = 0.65f,
                          std::uint32_t selected_points = 3U)
 {
-    static constexpr bool use_pivot = false;
-
     // Clear old buffers
     ground_cloud.clear();
     obstacle_cloud.clear();
@@ -56,60 +52,33 @@ void segmentGroundRANSAC(const pcl::PointCloud<pcl::PointXYZI>& input_cloud,
         std::log(1.0f -
                  std::pow((1.0f - percentage_of_outliers), selected_points)));
 
-    max_iterations = std::min(required_iterations, max_iterations);
     std::cout << "Required iterations: " << required_iterations << std::endl;
-    std::cout << "Selected iterations: " << max_iterations << std::endl;
 
-    // This is the pivot
-    const pcl::PointXYZ p1{0.0f, 0.0f, 0.0f};
-    float normal_x, normal_y, normal_z, plane_d;
-
-    for (std::size_t i = 0U; i < max_iterations; ++i)
+    for (std::size_t i = 0U; i < required_iterations; ++i)
     {
-        if constexpr (use_pivot)
+
+        // Choose 3 random indices
+        indices.clear();
+        while (indices.size() < 3)
         {
-            // Choose 2 random indices
-            indices.clear();
-            while (indices.size() < 2)
-            {
-                indices.insert(dis(gen));
-            }
-
-            // Get random indices
-            auto it = indices.cbegin();
-            const auto& p2 = input_cloud.points[*it];
-            ++it;
-            const auto& p3 = input_cloud.points[*it];
-
-            normal_x = (p2.y * p3.z) - (p2.z * p3.y);
-            normal_y = (p2.z * p3.x) - (p2.x * p3.z);
-            normal_z = (p2.x * p3.y) - (p2.y * p3.x);
+            indices.insert(dis(gen));
         }
-        else
-        {
-            // Choose 3 random indices
-            indices.clear();
-            while (indices.size() < 3)
-            {
-                indices.insert(dis(gen));
-            }
 
-            // Get random indices
-            auto it = indices.cbegin();
-            const auto& p1 = input_cloud.points[*it];
-            ++it;
-            const auto& p2 = input_cloud.points[*it];
-            ++it;
-            const auto& p3 = input_cloud.points[*it];
+        // Get random indices
+        auto it = indices.cbegin();
+        const auto& p1 = input_cloud.points[*it];
+        ++it;
+        const auto& p2 = input_cloud.points[*it];
+        ++it;
+        const auto& p3 = input_cloud.points[*it];
 
-            // Calculate a plane defined by three points
-            normal_x = ((p2.y - p1.y) * (p3.z - p1.z)) -
-                       ((p2.z - p1.z) * (p3.y - p1.y));
-            normal_y = ((p2.z - p1.z) * (p3.x - p1.x)) -
-                       ((p2.x - p1.x) * (p3.z - p1.z));
-            normal_z = ((p2.x - p1.x) * (p3.y - p1.y)) -
-                       ((p2.y - p1.y) * (p3.x - p1.x));
-        }
+        // Calculate a plane defined by three points
+        float normal_x =
+            ((p2.y - p1.y) * (p3.z - p1.z)) - ((p2.z - p1.z) * (p3.y - p1.y));
+        float normal_y =
+            ((p2.z - p1.z) * (p3.x - p1.x)) - ((p2.x - p1.x) * (p3.z - p1.z));
+        float normal_z =
+            ((p2.x - p1.x) * (p3.y - p1.y)) - ((p2.y - p1.y) * (p3.x - p1.x));
 
         // normalize plane coefficients
         const float normalization =
@@ -121,14 +90,7 @@ void segmentGroundRANSAC(const pcl::PointCloud<pcl::PointXYZI>& input_cloud,
         normal_y *= normalization;
         normal_z *= normalization;
 
-        if constexpr (use_pivot)
-        {
-            plane_d = 0.0f;
-        }
-        else
-        {
-            plane_d = normal_x * p1.x + normal_y * p1.y + normal_z * p1.z;
-        }
+        float plane_d = normal_x * p1.x + normal_y * p1.y + normal_z * p1.z;
 
         // Count the points close to the plane based on orthogonal distances
         current_inliers.clear();
@@ -151,17 +113,12 @@ void segmentGroundRANSAC(const pcl::PointCloud<pcl::PointXYZI>& input_cloud,
         // angular constraints
         if (current_inliers.size() > best_inlier_count)
         {
-            const float angle_between_horizontal_surface_and_plane_deg =
-                std::acos(normal_z) * (180.0 / M_PI);
-            if (angle_between_horizontal_surface_and_plane_deg < max_slope_deg)
-            {
-                best_inlier_count = current_inliers.size();
-                a = normal_x;
-                b = normal_y;
-                c = normal_z;
-                d = plane_d;
-                best_inliers.swap(current_inliers);
-            }
+            best_inlier_count = current_inliers.size();
+            a = normal_x;
+            b = normal_y;
+            c = normal_z;
+            d = plane_d;
+            best_inliers.swap(current_inliers);
         }
     }
 
@@ -170,7 +127,6 @@ void segmentGroundRANSAC(const pcl::PointCloud<pcl::PointXYZI>& input_cloud,
     {
         // Split points into ground and obstacle sets
         ground_cloud.reserve(best_inliers.size());
-        obstacle_cloud.reserve(input_cloud.points.size() - best_inliers.size());
         std::vector<bool> is_ground(input_cloud.points.size(), false);
         for (std::size_t index : best_inliers)
         {
@@ -179,6 +135,8 @@ void segmentGroundRANSAC(const pcl::PointCloud<pcl::PointXYZI>& input_cloud,
             ground_cloud.points.emplace_back(point.x, point.y, point.z, 220,
                                              220, 220, 0);
         }
+
+        obstacle_cloud.reserve(input_cloud.points.size() - best_inliers.size());
         for (std::size_t i = 0; i < input_cloud.points.size(); ++i)
         {
             if (!is_ground[i])
