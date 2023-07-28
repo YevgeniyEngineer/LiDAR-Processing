@@ -8,16 +8,17 @@
 
 namespace lidar_processing::utilities
 {
-template <typename T, std::size_t Size> class BoundedVector
+template <typename T, std::size_t Size>
+class BoundedVector
 {
   public:
-    using iterator = T *;
-    using const_iterator = const T *;
+    using iterator = T*;
+    using const_iterator = const T*;
 
-    BoundedVector(BoundedVector &&other) = delete;
-    BoundedVector &operator=(BoundedVector &&other) = delete;
-    BoundedVector(const BoundedVector &other) = delete;
-    BoundedVector &operator=(const BoundedVector &other) = delete;
+    BoundedVector(BoundedVector&& other) = delete;
+    BoundedVector& operator=(BoundedVector&& other) = delete;
+    BoundedVector(const BoundedVector& other) = delete;
+    BoundedVector& operator=(const BoundedVector& other) = delete;
 
     BoundedVector() : size_{0U}
     {
@@ -49,7 +50,7 @@ template <typename T, std::size_t Size> class BoundedVector
         return buffer_ + size_;
     }
 
-    bool push_back(const T &value) noexcept
+    bool push_back(const T& value) noexcept
     {
         if (size_ >= Size)
         {
@@ -59,7 +60,7 @@ template <typename T, std::size_t Size> class BoundedVector
         return true;
     }
 
-    bool push_back(T &&value) noexcept
+    bool push_back(T&& value) noexcept
     {
         if (size_ >= Size)
         {
@@ -79,17 +80,17 @@ template <typename T, std::size_t Size> class BoundedVector
         return true;
     }
 
-    T &operator[](std::size_t index)
+    T& operator[](std::size_t index)
     {
         return buffer_[index];
     }
 
-    const T &operator[](std::size_t index) const
+    const T& operator[](std::size_t index) const
     {
         return buffer_[index];
     }
 
-    T &at(std::size_t index)
+    T& at(std::size_t index)
     {
         if (index >= size_)
         {
@@ -98,7 +99,7 @@ template <typename T, std::size_t Size> class BoundedVector
         return buffer_[index];
     }
 
-    const T &at(std::size_t index) const
+    const T& at(std::size_t index) const
     {
         if (index >= size_)
         {

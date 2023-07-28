@@ -7,8 +7,9 @@
 
 namespace lidar_processing
 {
-void findOrderedConvexOutlines(const std::vector<pcl::PointCloud<pcl::PointXYZ>> &clustered_obstacle_cloud,
-                               std::vector<std::vector<geom::Point<float>>> &convex_hulls)
+void findOrderedConvexOutlines(
+    const std::vector<pcl::PointCloud<pcl::PointXYZ>>& clustered_obstacle_cloud,
+    std::vector<std::vector<geom::Point<float>>>& convex_hulls)
 {
     using PointType = geom::Point<float>;
 
@@ -17,12 +18,12 @@ void findOrderedConvexOutlines(const std::vector<pcl::PointCloud<pcl::PointXYZ>>
     convex_hulls.reserve(clustered_obstacle_cloud.size());
 
     // Copy data into suitable format
-    for (const auto &cluster : clustered_obstacle_cloud)
+    for (const auto& cluster : clustered_obstacle_cloud)
     {
         // Copy points from current cluster
         std::vector<PointType> cluster_points;
         cluster_points.reserve(cluster.size());
-        for (const auto &point : cluster.points)
+        for (const auto& point : cluster.points)
         {
             cluster_points.push_back(PointType(point.x, point.y));
         }
@@ -31,13 +32,16 @@ void findOrderedConvexOutlines(const std::vector<pcl::PointCloud<pcl::PointXYZ>>
         std::vector<std::int32_t> hull_indices;
         if (cluster_points.size() > 1000)
         {
-            hull_indices = std::move(geom::constructConvexHull(cluster_points, geom::ConvexHullAlgorithm::CHAN,
-                                                               geom::Orientation::COUNTERCLOCKWISE));
+            hull_indices = std::move(geom::constructConvexHull(
+                cluster_points, geom::ConvexHullAlgorithm::CHAN,
+                geom::Orientation::COUNTERCLOCKWISE));
         }
         else
         {
             hull_indices = std::move(geom::constructConvexHull(
-                cluster_points, geom::ConvexHullAlgorithm::ANDREW_MONOTONE_CHAIN, geom::Orientation::COUNTERCLOCKWISE));
+                cluster_points,
+                geom::ConvexHullAlgorithm::ANDREW_MONOTONE_CHAIN,
+                geom::Orientation::COUNTERCLOCKWISE));
         }
 
         std::vector<PointType> hull_points;
@@ -47,7 +51,8 @@ void findOrderedConvexOutlines(const std::vector<pcl::PointCloud<pcl::PointXYZ>>
         }
 
 #if DEBUG_POLYGONIZATION
-        std::cout << "Convex hull contains " << hull_points.size() << " points." << std::endl;
+        std::cout << "Convex hull contains " << hull_points.size() << " points."
+                  << std::endl;
 #endif
 
         if (!hull_points.empty())
@@ -57,8 +62,9 @@ void findOrderedConvexOutlines(const std::vector<pcl::PointCloud<pcl::PointXYZ>>
     }
 }
 
-void findOrderedConcaveOutlines(const std::vector<pcl::PointCloud<pcl::PointXYZ>> &clustered_obstacle_cloud,
-                                std::vector<std::vector<geom::Point<float>>> &concave_hulls)
+void findOrderedConcaveOutlines(
+    const std::vector<pcl::PointCloud<pcl::PointXYZ>>& clustered_obstacle_cloud,
+    std::vector<std::vector<geom::Point<float>>>& concave_hulls)
 {
     using PointType = geom::Point<float>;
 
@@ -67,7 +73,7 @@ void findOrderedConcaveOutlines(const std::vector<pcl::PointCloud<pcl::PointXYZ>
     concave_hulls.reserve(clustered_obstacle_cloud.size());
 
     // Copy data into suitable format
-    for (const auto &cluster : clustered_obstacle_cloud)
+    for (const auto& cluster : clustered_obstacle_cloud)
     {
         // Point cache
         std::vector<PointType> hull_points;
@@ -77,13 +83,15 @@ void findOrderedConcaveOutlines(const std::vector<pcl::PointCloud<pcl::PointXYZ>
         {
             std::vector<PointType> cluster_points;
             cluster_points.reserve(cluster.size());
-            for (const auto &point : cluster.points)
+            for (const auto& point : cluster.points)
             {
                 cluster_points.push_back(PointType{point.x, point.y});
             }
 
             const auto hull_indices = geom::constructConvexHull(
-                cluster_points, geom::ConvexHullAlgorithm::ANDREW_MONOTONE_CHAIN, geom::Orientation::COUNTERCLOCKWISE);
+                cluster_points,
+                geom::ConvexHullAlgorithm::ANDREW_MONOTONE_CHAIN,
+                geom::Orientation::COUNTERCLOCKWISE);
 
             hull_points.reserve(hull_indices.size());
             for (const auto index : hull_indices)
@@ -97,7 +105,7 @@ void findOrderedConcaveOutlines(const std::vector<pcl::PointCloud<pcl::PointXYZ>
             // Copy points from current cluster
             std::vector<float> coordinates;
             coordinates.reserve(cluster.size() * 2);
-            for (const auto &point : cluster.points)
+            for (const auto& point : cluster.points)
             {
                 coordinates.push_back(point.x);
                 coordinates.push_back(point.y);
@@ -110,13 +118,15 @@ void findOrderedConcaveOutlines(const std::vector<pcl::PointCloud<pcl::PointXYZ>
             hull_points.reserve(hull_indices.size());
             for (const auto index : hull_indices)
             {
-                const auto &cluster_point = cluster[index];
-                hull_points.push_back(PointType{cluster_point.x, cluster_point.y});
+                const auto& cluster_point = cluster[index];
+                hull_points.push_back(
+                    PointType{cluster_point.x, cluster_point.y});
             }
         }
 
 #if DEBUG_POLYGONIZATION
-        std::cout << "Concave hull contains " << hull_points.size() << " points." << std::endl;
+        std::cout << "Concave hull contains " << hull_points.size()
+                  << " points." << std::endl;
 #endif
 
         if (!hull_points.empty())

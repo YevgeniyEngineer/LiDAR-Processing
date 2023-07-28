@@ -19,16 +19,16 @@ struct PointXY final
     ~PointXY() noexcept = default;
 
     // Copy constructor
-    PointXY(const PointXY &other) = default;
+    PointXY(const PointXY& other) = default;
 
     // Copy assignment operator
-    PointXY &operator=(const PointXY &rhs) = default;
+    PointXY& operator=(const PointXY& rhs) = default;
 
     // Move constructor
-    PointXY(PointXY &&) noexcept = default;
+    PointXY(PointXY&&) noexcept = default;
 
     // Move assignment operator
-    PointXY &operator=(PointXY &&other) noexcept = default;
+    PointXY& operator=(PointXY&& other) noexcept = default;
 
     float x;
     float y;
@@ -36,7 +36,7 @@ struct PointXY final
 
 // Operator that returns result of comparison of two points
 // without taking index into consideration
-inline bool operator==(const PointXY &lhs, const PointXY &rhs)
+inline bool operator==(const PointXY& lhs, const PointXY& rhs)
 {
     return (lhs.x == rhs.x && lhs.y == rhs.y);
 }
@@ -45,7 +45,7 @@ inline bool operator==(const PointXY &lhs, const PointXY &rhs)
 /// @param lhs Point 1
 /// @param rhs Point 2
 /// @return True if either x(lhs) < x(rhs) or y(lhs) < y(rhs)
-inline static bool operator<(const PointXY &lhs, const PointXY &rhs) noexcept
+inline static bool operator<(const PointXY& lhs, const PointXY& rhs) noexcept
 {
     return lhs.x < rhs.x || (lhs.x == rhs.x && lhs.y < rhs.y);
 }
@@ -54,7 +54,8 @@ inline static bool operator<(const PointXY &lhs, const PointXY &rhs) noexcept
 /// @param lhs Point 1
 /// @param rhs Point 2
 /// @return Distance squared
-inline static float distanceSquared(const PointXY &lhs, const PointXY &rhs) noexcept
+inline static float distanceSquared(const PointXY& lhs,
+                                    const PointXY& rhs) noexcept
 {
     float dx = lhs.x - rhs.x;
     float dy = lhs.y - rhs.y;
@@ -65,7 +66,7 @@ inline static float distanceSquared(const PointXY &lhs, const PointXY &rhs) noex
 /// @param lhs Point 1
 /// @param rhs Point 2
 /// @return Distance
-inline static float distance(const PointXY &lhs, const PointXY &rhs) noexcept
+inline static float distance(const PointXY& lhs, const PointXY& rhs) noexcept
 {
     return std::sqrt(distanceSquared(lhs, rhs));
 }
@@ -82,16 +83,16 @@ struct PointXYZ final
     ~PointXYZ() noexcept = default;
 
     // Copy constructor
-    PointXYZ(const PointXYZ &other) = default;
+    PointXYZ(const PointXYZ& other) = default;
 
     // Copy assignment operator
-    PointXYZ &operator=(const PointXYZ &rhs) = default;
+    PointXYZ& operator=(const PointXYZ& rhs) = default;
 
     // Move constructor
-    PointXYZ(PointXYZ &&) noexcept = default;
+    PointXYZ(PointXYZ&&) noexcept = default;
 
     // Move assignment operator
-    PointXYZ &operator=(PointXYZ &&other) noexcept = default;
+    PointXYZ& operator=(PointXYZ&& other) noexcept = default;
 
     float x;
     float y;
@@ -100,7 +101,7 @@ struct PointXYZ final
 
 // Operator that returns result of comparison of two points
 // without taking index into consideration
-inline static bool operator==(const PointXYZ &lhs, const PointXYZ &rhs) noexcept
+inline static bool operator==(const PointXYZ& lhs, const PointXYZ& rhs) noexcept
 {
     return (lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z);
 }
@@ -109,7 +110,8 @@ inline static bool operator==(const PointXYZ &lhs, const PointXYZ &rhs) noexcept
 /// @param lhs Point 1
 /// @param rhs Point 2
 /// @return Distance squared
-inline static float distanceSquared(const PointXYZ &lhs, const PointXYZ &rhs) noexcept
+inline static float distanceSquared(const PointXYZ& lhs,
+                                    const PointXYZ& rhs) noexcept
 {
     float dx = lhs.x - rhs.x;
     float dy = lhs.y - rhs.y;
@@ -121,7 +123,7 @@ inline static float distanceSquared(const PointXYZ &lhs, const PointXYZ &rhs) no
 /// @param lhs Point 1
 /// @param rhs Point 2
 /// @return Distance
-inline static float distance(const PointXYZ &lhs, const PointXYZ &rhs) noexcept
+inline static float distance(const PointXYZ& lhs, const PointXYZ& rhs) noexcept
 {
     return std::sqrt(distanceSquared(lhs, rhs));
 }
@@ -133,12 +135,12 @@ struct Vector2D
     Vector2D() : x(0), y(0){};
     Vector2D(float x, float y) : x(x), y(y){};
 
-    Vector2D operator+(const Vector2D &rhs) const noexcept
+    Vector2D operator+(const Vector2D& rhs) const noexcept
     {
         return Vector2D(x + rhs.x, y + rhs.y);
     }
 
-    Vector2D operator-(const Vector2D &rhs) const noexcept
+    Vector2D operator-(const Vector2D& rhs) const noexcept
     {
         return Vector2D(x - rhs.x, y - rhs.y);
     }
@@ -158,12 +160,12 @@ struct Vector2D
         return Vector2D(x * num, y * num);
     }
 
-    float dot(const Vector2D &rhs) const noexcept
+    float dot(const Vector2D& rhs) const noexcept
     {
         return x * rhs.x + y * rhs.y;
     }
 
-    float cross(const Vector2D &rhs) const noexcept
+    float cross(const Vector2D& rhs) const noexcept
     {
         return x * rhs.y - y * rhs.x;
     }
@@ -203,7 +205,7 @@ struct Segment2D
     Vector2D a, b;
 
     Segment2D(){};
-    Segment2D(const Vector2D &a, const Vector2D &b) : a(a), b(b){};
+    Segment2D(const Vector2D& a, const Vector2D& b) : a(a), b(b){};
 
     Vector2D dir() const noexcept
     {
@@ -220,7 +222,7 @@ struct Segment2D
         return dir().mag();
     }
 
-    Vector2D closest_point(const Vector2D &p) const noexcept
+    Vector2D closest_point(const Vector2D& p) const noexcept
     {
         Vector2D d = dir().normalized();
         float t = (p - a).dot(d);

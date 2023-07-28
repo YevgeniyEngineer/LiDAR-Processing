@@ -15,11 +15,16 @@ namespace lidar_processing
 /// @param point_1 First point
 /// @param point_2 Second point
 /// @param point_3 Third point
-/// @return True if counterclockwise, else False (counterclockwise = to the left, Clockwise = to the right)
+/// @return True if counterclockwise, else False (counterclockwise = to the
+/// left, Clockwise = to the right)
 template <typename PointT>
-inline static bool counterclockwise(const PointT &point_1, const PointT &point_2, const PointT &point_3) noexcept
+inline static bool counterclockwise(const PointT& point_1,
+                                    const PointT& point_2,
+                                    const PointT& point_3) noexcept
 {
-    return (point_2.x - point_1.x) * (point_3.y - point_1.y) - (point_2.y - point_1.y) * (point_3.x - point_1.x) > 0.0;
+    return (point_2.x - point_1.x) * (point_3.y - point_1.y) -
+               (point_2.y - point_1.y) * (point_3.x - point_1.x) >
+           0.0;
 }
 
 /// @brief Graham - Andrew algorithm
@@ -27,8 +32,9 @@ inline static bool counterclockwise(const PointT &point_1, const PointT &point_2
 /// @param points Vector of points
 /// @param hull Convex hull formed from 2D points
 template <typename PointT>
-inline static void constructGrahamAndrewConvexHull(std::vector<PointT> points, std::vector<PointT> &hull,
-                                                   bool threaded = false) noexcept
+inline static void constructGrahamAndrewConvexHull(
+    std::vector<PointT> points, std::vector<PointT>& hull,
+    bool threaded = false) noexcept
 {
     // Clean old point cache
     hull.clear();
@@ -37,7 +43,8 @@ inline static void constructGrahamAndrewConvexHull(std::vector<PointT> points, s
     int n = points.size();
     if (n <= 3)
     {
-        std::move(std::make_move_iterator(points.begin()), std::make_move_iterator(points.end()),
+        std::move(std::make_move_iterator(points.begin()),
+                  std::make_move_iterator(points.end()),
                   std::back_inserter(hull));
 
         points.erase(points.begin(), points.end());
@@ -61,7 +68,8 @@ inline static void constructGrahamAndrewConvexHull(std::vector<PointT> points, s
     int k = 0;
     for (int i = 0; i < n; hull[k++] = points[i++])
     {
-        for (; (k > 1) && counterclockwise(hull[k - 2], hull[k - 1], points[i]); --k)
+        for (; (k > 1) && counterclockwise(hull[k - 2], hull[k - 1], points[i]);
+             --k)
         {
             ;
         }
@@ -70,7 +78,8 @@ inline static void constructGrahamAndrewConvexHull(std::vector<PointT> points, s
     // Compute upper hull
     for (int i = n - 2, t = k; i >= 0; hull[k++] = points[i--])
     {
-        for (; (k > t) && counterclockwise(hull[k - 2], hull[k - 1], points[i]); --k)
+        for (; (k > t) && counterclockwise(hull[k - 2], hull[k - 1], points[i]);
+             --k)
         {
             ;
         }
@@ -85,7 +94,8 @@ inline static void constructGrahamAndrewConvexHull(std::vector<PointT> points, s
 /// @param points An array of 2D points
 /// @param hull Convex hull
 template <typename PointT>
-inline static void constructJarvisMarchConvexHull(const std::vector<PointT> &points, std::vector<PointT> &hull) noexcept
+inline static void constructJarvisMarchConvexHull(
+    const std::vector<PointT>& points, std::vector<PointT>& hull) noexcept
 {
     // Clean old point cache
     hull.clear();
@@ -145,7 +155,8 @@ inline static void constructJarvisMarchConvexHull(const std::vector<PointT> &poi
 /// @param points An array of 2D points
 /// @param hull Convex hull
 template <typename PointT>
-inline static void constructChanConvexHull(std::vector<PointT> points, std::vector<PointT> &hull,
+inline static void constructChanConvexHull(std::vector<PointT> points,
+                                           std::vector<PointT>& hull,
                                            bool threaded = false) noexcept
 {
     // Clean old point cache
@@ -155,7 +166,8 @@ inline static void constructChanConvexHull(std::vector<PointT> points, std::vect
     int n = points.size();
     if (n <= 3)
     {
-        std::copy(std::make_move_iterator(points.begin()), std::make_move_iterator(points.end()),
+        std::copy(std::make_move_iterator(points.begin()),
+                  std::make_move_iterator(points.end()),
                   std::back_inserter(hull));
 
         points.erase(points.begin(), points.end());
@@ -166,11 +178,12 @@ inline static void constructChanConvexHull(std::vector<PointT> points, std::vect
     int number_of_subsets = std::ceil(std::sqrt(n));
     int number_of_points_within_subset = points.size() / number_of_subsets;
 
-    // Divide points into number_of_subsets subsets each containing number_of_points_within_subset points
+    // Divide points into number_of_subsets subsets each containing
+    // number_of_points_within_subset points
     std::vector<std::vector<PointT>> subsets(number_of_subsets);
 
     // Pre-allocate memory
-    for (auto &subset : subsets)
+    for (auto& subset : subsets)
     {
         subset.reserve(number_of_points_within_subset);
     }
@@ -179,18 +192,22 @@ inline static void constructChanConvexHull(std::vector<PointT> points, std::vect
     for (int subset_no = 0; subset_no < number_of_subsets - 1; ++subset_no)
     {
         auto start_it = std::next(points.begin(), start_idx);
-        auto stop_it = std::next(points.begin(), start_idx + number_of_points_within_subset);
+        auto stop_it = std::next(points.begin(),
+                                 start_idx + number_of_points_within_subset);
 
-        std::copy(start_it, stop_it, std::back_insert_iterator(subsets[subset_no]));
+        std::copy(start_it, stop_it,
+                  std::back_insert_iterator(subsets[subset_no]));
         start_idx += number_of_points_within_subset;
     }
 
     // Handle the last subset
     auto start_it = std::next(points.begin(), start_idx);
     auto stop_it = points.end();
-    std::copy(start_it, stop_it, std::back_insert_iterator(subsets[number_of_subsets - 1]));
+    std::copy(start_it, stop_it,
+              std::back_insert_iterator(subsets[number_of_subsets - 1]));
 
-    // After moving elements from points vector, all elements are not in indeterminate state
+    // After moving elements from points vector, all elements are not in
+    // indeterminate state
     points.erase(points.begin(), points.end());
 
     // Compute convex hull using Graham's scan for each subset
@@ -200,36 +217,44 @@ inline static void constructChanConvexHull(std::vector<PointT> points, std::vect
 
     if (threaded)
     {
-        std::for_each(std::execution::par, subset_numbers.cbegin(), subset_numbers.cend(),
+        std::for_each(std::execution::par, subset_numbers.cbegin(),
+                      subset_numbers.cend(),
                       [&convex_hulls, &subsets](const int subset_no) {
                           // Construct convex hull for current subset
-                          // This will fill convex_hulls[subset_no] with the hull corresponding to subsets[subset_no]
-                          constructGrahamAndrewConvexHull(subsets[subset_no], convex_hulls[subset_no]);
+                          // This will fill convex_hulls[subset_no] with the
+                          // hull corresponding to subsets[subset_no]
+                          constructGrahamAndrewConvexHull(
+                              subsets[subset_no], convex_hulls[subset_no]);
                       });
     }
     else
     {
-        std::for_each(subset_numbers.cbegin(), subset_numbers.cend(), [&convex_hulls, &subsets](const int subset_no) {
-            // Construct convex hull for current subset
-            // This will fill convex_hulls[subset_no] with the hull corresponding to subsets[subset_no]
-            constructGrahamAndrewConvexHull(subsets[subset_no], convex_hulls[subset_no]);
-        });
+        std::for_each(subset_numbers.cbegin(), subset_numbers.cend(),
+                      [&convex_hulls, &subsets](const int subset_no) {
+                          // Construct convex hull for current subset
+                          // This will fill convex_hulls[subset_no] with the
+                          // hull corresponding to subsets[subset_no]
+                          constructGrahamAndrewConvexHull(
+                              subsets[subset_no], convex_hulls[subset_no]);
+                      });
     }
     // Merge convex hull points
     std::size_t reservation_size = 0;
-    for (const auto &hull_points : convex_hulls)
+    for (const auto& hull_points : convex_hulls)
     {
         reservation_size += hull_points.size();
     }
     std::vector<PointT> merged_points;
     merged_points.reserve(reservation_size);
-    for (auto &&hull_points : convex_hulls)
+    for (auto&& hull_points : convex_hulls)
     {
-        std::copy(std::make_move_iterator(hull_points.begin()), std::make_move_iterator(hull_points.end()),
+        std::copy(std::make_move_iterator(hull_points.begin()),
+                  std::make_move_iterator(hull_points.end()),
                   std::back_inserter(merged_points));
     }
 
-    // After moving elements from convex_hulls into merged_points, it is in indeterminate state
+    // After moving elements from convex_hulls into merged_points, it is in
+    // indeterminate state
     convex_hulls.erase(convex_hulls.begin(), convex_hulls.end());
 
     // Merge convex hulls using Jarvis March
@@ -237,7 +262,8 @@ inline static void constructChanConvexHull(std::vector<PointT> points, std::vect
 }
 
 template <typename PointT>
-inline static bool isInsidePolygon(const PointT &point, const std::vector<PointT> &polygon) noexcept
+inline static bool isInsidePolygon(const PointT& point,
+                                   const std::vector<PointT>& polygon) noexcept
 {
     const int number_of_polygon_vertices = static_cast<int>(polygon.size());
     if (number_of_polygon_vertices < 3)
@@ -247,11 +273,12 @@ inline static bool isInsidePolygon(const PointT &point, const std::vector<PointT
     bool is_inside = false;
     for (int i = 0; i < number_of_polygon_vertices - 1; ++i)
     {
-        const auto &point_1 = polygon[i];
-        const auto &point_2 = polygon[i + 1];
+        const auto& point_1 = polygon[i];
+        const auto& point_2 = polygon[i + 1];
         if (((point.y < point_1.y) != (point.y < point_2.y)) &&
             ((point.x < (point_2.x - point_1.x) * (point.y - point_1.y) /
-                                (point_2.y - point_1.y + std::numeric_limits<float>::epsilon()) +
+                                (point_2.y - point_1.y +
+                                 std::numeric_limits<float>::epsilon()) +
                             point_1.x)))
         {
             is_inside = !is_inside;
@@ -262,8 +289,8 @@ inline static bool isInsidePolygon(const PointT &point, const std::vector<PointT
 
 // TODO
 template <typename PointT>
-inline static double distanceBetweenConvexPolygons(const std::vector<PointT> &polygon_1,
-                                                   const std::vector<PointT> &polygon_2)
+inline static double distanceBetweenConvexPolygons(
+    const std::vector<PointT>& polygon_1, const std::vector<PointT>& polygon_2)
 {
     return (0.0);
 }

@@ -28,15 +28,18 @@ enum class ClusteringAlgorithm
 class ObstacleClusterer
 {
   public:
-    ObstacleClusterer(float neighbour_radius_threshold = 0.5, float cluster_quality = 0.5,
-                      std::uint32_t min_cluster_size = 1,
-                      std::uint32_t max_cluster_size = std::numeric_limits<std::uint32_t>::max(),
-                      ClusteringAlgorithm clustering_algorithm = ClusteringAlgorithm::DBSCAN);
+    ObstacleClusterer(
+        float neighbour_radius_threshold = 0.5, float cluster_quality = 0.5,
+        std::uint32_t min_cluster_size = 1,
+        std::uint32_t max_cluster_size =
+            std::numeric_limits<std::uint32_t>::max(),
+        ClusteringAlgorithm clustering_algorithm = ClusteringAlgorithm::DBSCAN);
 
     ~ObstacleClusterer();
 
-    void clusterObstacles(const pcl::PointCloud<pcl::PointXYZRGBL> &obstacle_cloud,
-                          std::vector<pcl::PointCloud<pcl::PointXYZ>> &clustered_cloud);
+    void clusterObstacles(
+        const pcl::PointCloud<pcl::PointXYZRGBL>& obstacle_cloud,
+        std::vector<pcl::PointCloud<pcl::PointXYZ>>& clustered_cloud);
 
   private:
     float neighbour_radius_threshold_;
