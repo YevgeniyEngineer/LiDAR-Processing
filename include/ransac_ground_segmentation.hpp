@@ -2,25 +2,104 @@
 
 #include "utilities/bounded_dynamic_array.hpp"
 #include <cmath>
+#include <condition_variable>
 #include <cstdint>
 #include <eigen3/Eigen/Dense>
+#include <functional>
+#include <future>
 #include <limits>
+#include <mutex>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <queue>
 #include <random>
 #include <stdexcept>
+#include <thread>
 #include <unordered_set>
 #include <vector>
 
 namespace lidar_processing
 {
+class ThreadPool
+{
+  private:
+    std::vector<std::thread> workers;
+    std::queue<std::function<void()>> tasks;
+    std::mutex tasks_mutex;
+    std::condition_variable condition;
+    bool stop;
+
+  public:
+    ThreadPool(size_t threads) : stop(false)
+    {
+        for (size_t i = 0; i < threads; ++i)
+        {
+            workers.emplace_back([this]() {
+                while (true)
+                {
+                    std::function<void()> task;
+                    {
+                        std::unique_lock<std::mutex> lock(tasks_mutex);
+                        condition.wait(lock, [this] {
+                            return stop || !tasks.empty();
+                        });
+                        if (stop && tasks.empty())
+                        {
+                            return;
+                        }
+                        task = std::move(tasks.front());
+                        tasks.pop();
+                    }
+                    task();
+                }
+            });
+        }
+    }
+
+    template <class F>
+    auto enqueue(F&& f) -> std::future<decltype(f())>
+    {
+        using return_type = decltype(f());
+        auto task = std::make_shared<std::packaged_task<return_type()>>(
+            std::forward<F>(f));
+        std::future<return_type> res = task->get_future();
+        {
+            std::unique_lock<std::mutex> lock(tasks_mutex);
+            if (stop)
+            {
+                throw std::runtime_error("enqueue on stopped ThreadPool");
+            }
+            tasks.emplace([task]() {
+                (*task)();
+            });
+        }
+        condition.notify_one();
+        return res;
+    }
+
+    ~ThreadPool()
+    {
+        {
+            std::unique_lock<std::mutex> lock(tasks_mutex);
+            stop = true;
+        }
+        condition.notify_all();
+        for (std::thread& worker : workers)
+        {
+            worker.join();
+        }
+    }
+};
+
 void segmentGroundRANSAC(const pcl::PointCloud<pcl::PointXYZI>& input_cloud,
                          pcl::PointCloud<pcl::PointXYZRGBL>& ground_cloud,
                          pcl::PointCloud<pcl::PointXYZRGBL>& obstacle_cloud,
-                         float orthogonal_distance_threshold = 0.3f,
-                         float probability_of_success = 0.99f,
+                         float orthogonal_distance_threshold = 0.10f,
+                         float orthogonal_distance_post_convergence = 0.3f,
+                         float probability_of_success = 0.999f,
                          float percentage_of_outliers = 0.65f,
-                         std::uint32_t selected_points = 3U)
+                         std::uint32_t selected_points = 3U,
+                         std::size_t thread_count = 8U)
 {
     // Clear old buffers
     ground_cloud.clear();
@@ -36,16 +115,8 @@ void segmentGroundRANSAC(const pcl::PointCloud<pcl::PointXYZI>& input_cloud,
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(0, input_cloud.points.size() - 1);
 
-    std::unordered_set<std::int64_t> indices;
-    indices.reserve(3);
-
+    std::size_t indices[3];
     std::size_t best_inlier_count = 0U;
-
-    std::vector<std::size_t> best_inliers;
-    best_inliers.reserve(input_cloud.points.size());
-
-    std::vector<std::size_t> current_inliers;
-    current_inliers.reserve(input_cloud.points.size());
 
     std::uint32_t required_iterations = static_cast<std::uint32_t>(
         std::log(1.0f - probability_of_success) /
@@ -54,23 +125,27 @@ void segmentGroundRANSAC(const pcl::PointCloud<pcl::PointXYZI>& input_cloud,
 
     std::cout << "Required iterations: " << required_iterations << std::endl;
 
+    // Launch threads
+    ThreadPool pool(thread_count);
+    std::vector<std::future<std::size_t>> futures(thread_count);
+    std::size_t chunk_size = input_cloud.points.size() / thread_count;
+
     for (std::size_t i = 0U; i < required_iterations; ++i)
     {
-
-        // Choose 3 random indices
-        indices.clear();
-        while (indices.size() < 3)
+        // Choose 3 distinct random indices
+        for (std::size_t k = 0U; k < 3U;)
         {
-            indices.insert(dis(gen));
+            indices[k] = dis(gen);
+            if (std::find(indices, indices + k, indices[k]) == indices + k)
+            {
+                ++k;
+            }
         }
 
         // Get random indices
-        auto it = indices.cbegin();
-        const auto& p1 = input_cloud.points[*it];
-        ++it;
-        const auto& p2 = input_cloud.points[*it];
-        ++it;
-        const auto& p3 = input_cloud.points[*it];
+        const auto& p1 = input_cloud.points[indices[0]];
+        const auto& p2 = input_cloud.points[indices[1]];
+        const auto& p3 = input_cloud.points[indices[2]];
 
         // Calculate a plane defined by three points
         float normal_x =
@@ -90,58 +165,66 @@ void segmentGroundRANSAC(const pcl::PointCloud<pcl::PointXYZI>& input_cloud,
         normal_y *= normalization;
         normal_z *= normalization;
 
-        float plane_d = normal_x * p1.x + normal_y * p1.y + normal_z * p1.z;
+        const float plane_d =
+            normal_x * p1.x + normal_y * p1.y + normal_z * p1.z;
 
-        // Count the points close to the plane based on orthogonal distances
-        current_inliers.clear();
-        for (std::size_t j = 0U; j < input_cloud.points.size(); ++j)
+        // Parallel inlier counting
+        for (std::size_t t = 0U; t < thread_count; ++t)
         {
-            const auto& point = input_cloud.points[j];
+            futures[t] = pool.enqueue([&, t]() {
+                std::size_t local_count = 0U;
+                for (std::size_t j = t * chunk_size;
+                     j < (t + 1) * chunk_size && j < input_cloud.points.size();
+                     j++)
+                {
+                    const auto& point = input_cloud.points[j];
 
-            const float orthogonal_distance =
-                std::fabs(normal_x * point.x + normal_y * point.y +
-                          normal_z * point.z - plane_d);
+                    const float distance =
+                        std::fabs(normal_x * point.x + normal_y * point.y +
+                                  normal_z * point.z - plane_d);
 
-            if (orthogonal_distance < orthogonal_distance_threshold)
-            {
-                current_inliers.push_back(j);
-            }
+                    if (distance < orthogonal_distance_threshold)
+                    {
+                        ++local_count;
+                    }
+                }
+                return local_count;
+            });
+        }
+
+        // Collect results from all threads
+        std::size_t inlier_count = 0U;
+        for (std::size_t t = 0U; t < thread_count; ++t)
+        {
+            inlier_count += futures[t].get();
         }
 
         // If the plane is best so far, update the plane coefficients
         // This is under the constraint that the plane coefficients satisfy
         // angular constraints
-        if (current_inliers.size() > best_inlier_count)
+        if (inlier_count > best_inlier_count)
         {
-            best_inlier_count = current_inliers.size();
+            best_inlier_count = inlier_count;
             a = normal_x;
             b = normal_y;
             c = normal_z;
             d = plane_d;
-            best_inliers.swap(current_inliers);
         }
     }
 
     // Using inliers, compute PCA
     if (best_inlier_count > 0U)
     {
-        // Split points into ground and obstacle sets
-        ground_cloud.reserve(best_inliers.size());
-        std::vector<bool> is_ground(input_cloud.points.size(), false);
-        for (std::size_t index : best_inliers)
+        for (const auto& point : input_cloud.points)
         {
-            is_ground[index] = true;
-            const auto& point = input_cloud.points[index];
-            ground_cloud.points.emplace_back(point.x, point.y, point.z, 220,
-                                             220, 220, 0);
-        }
-
-        obstacle_cloud.reserve(input_cloud.points.size() - best_inliers.size());
-        for (std::size_t i = 0; i < input_cloud.points.size(); ++i)
-        {
-            if (!is_ground[i])
+            if (std::fabs(a * point.x + b * point.y + c * point.z - d) <
+                orthogonal_distance_post_convergence)
             {
-                const auto& point = input_cloud.points[i];
+                ground_cloud.points.emplace_back(point.x, point.y, point.z, 220,
+                                                 220, 220, 0);
+            }
+            else
+            {
                 obstacle_cloud.points.emplace_back(point.x, point.y, point.z, 0,
                                                    255, 0, 1);
             }
