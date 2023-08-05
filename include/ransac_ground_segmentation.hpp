@@ -94,8 +94,8 @@ class ThreadPool
 void segmentGroundRANSAC(const pcl::PointCloud<pcl::PointXYZI>& input_cloud,
                          pcl::PointCloud<pcl::PointXYZRGBL>& ground_cloud,
                          pcl::PointCloud<pcl::PointXYZRGBL>& obstacle_cloud,
-                         float orthogonal_distance_threshold = 0.10f,
-                         float orthogonal_distance_post_convergence = 0.3f,
+                         float orthogonal_distance_threshold = 0.1f,
+                         float orthogonal_distance_post_convergence = 0.2f,
                          float probability_of_success = 0.999f,
                          float percentage_of_outliers = 0.65f,
                          std::uint32_t selected_points = 3U,
@@ -109,11 +109,12 @@ void segmentGroundRANSAC(const pcl::PointCloud<pcl::PointXYZI>& input_cloud,
     float a = 0.0f;
     float b = 0.0f;
     float c = 1.0f;
-    float d = std::numeric_limits<float>::infinity();
+    float d = std::numeric_limits<float>::max();
 
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(0, input_cloud.points.size() - 1);
+    std::uniform_int_distribution<std::size_t> dis(
+        0, input_cloud.points.size() - 1U);
 
     std::size_t indices[3];
     std::size_t best_inlier_count = 0U;
