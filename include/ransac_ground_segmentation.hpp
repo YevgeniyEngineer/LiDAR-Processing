@@ -22,37 +22,49 @@ namespace lidar_processing
 {
 class ThreadPool
 {
-  private:
-    std::vector<std::thread> workers;
-    std::queue<std::function<void()>> tasks;
-    std::mutex tasks_mutex;
-    std::condition_variable condition;
-    bool stop;
-
   public:
-    ThreadPool(size_t threads) : stop(false)
+    ThreadPool(std::size_t number_of_threads) : stop_{false}
     {
-        for (size_t i = 0; i < threads; ++i)
+        for (std::size_t i = 0; i < number_of_threads; ++i)
         {
-            workers.emplace_back([this]() {
+            workers_.emplace_back([this]() {
                 while (true)
                 {
-                    std::function<void()> task;
+                    std::packaged_task<void()> task;
                     {
-                        std::unique_lock<std::mutex> lock(tasks_mutex);
-                        condition.wait(lock, [this] {
-                            return stop || !tasks.empty();
+                        std::unique_lock<std::mutex> lock(tasks_mutex_);
+
+                        condition_.wait(lock, [this] {
+                            return stop_ || !tasks_.empty();
                         });
-                        if (stop && tasks.empty())
+
+                        if (stop_)
                         {
                             return;
                         }
-                        task = std::move(tasks.front());
-                        tasks.pop();
+
+                        task = std::move(tasks_.front());
+                        tasks_.pop();
                     }
+
                     task();
                 }
             });
+        }
+    }
+
+    ~ThreadPool()
+    {
+        {
+            std::unique_lock<std::mutex> lock(tasks_mutex_);
+            stop_ = true;
+        }
+
+        condition_.notify_all();
+
+        for (std::thread& worker : workers_)
+        {
+            worker.join();
         }
     }
 
@@ -60,35 +72,29 @@ class ThreadPool
     auto enqueue(F&& f) -> std::future<decltype(f())>
     {
         using return_type = decltype(f());
-        auto task = std::make_shared<std::packaged_task<return_type()>>(
-            std::forward<F>(f));
-        std::future<return_type> res = task->get_future();
+        std::packaged_task<return_type()> task(std::forward<F>(f));
+        std::future<return_type> result = task.get_future();
+
         {
-            std::unique_lock<std::mutex> lock(tasks_mutex);
-            if (stop)
+            std::unique_lock<std::mutex> lock(tasks_mutex_);
+            if (stop_)
             {
                 throw std::runtime_error("enqueue on stopped ThreadPool");
             }
-            tasks.emplace([task]() {
-                (*task)();
-            });
+            tasks_.emplace(std::move(task));
         }
-        condition.notify_one();
-        return res;
+
+        condition_.notify_one();
+
+        return result;
     }
 
-    ~ThreadPool()
-    {
-        {
-            std::unique_lock<std::mutex> lock(tasks_mutex);
-            stop = true;
-        }
-        condition.notify_all();
-        for (std::thread& worker : workers)
-        {
-            worker.join();
-        }
-    }
+  private:
+    std::vector<std::thread> workers_;
+    std::queue<std::packaged_task<void()>> tasks_;
+    std::mutex tasks_mutex_;
+    std::condition_variable condition_;
+    bool stop_;
 };
 
 void segmentGroundRANSAC(const pcl::PointCloud<pcl::PointXYZI>& input_cloud,
@@ -124,7 +130,7 @@ void segmentGroundRANSAC(const pcl::PointCloud<pcl::PointXYZI>& input_cloud,
         std::log(1.0f -
                  std::pow((1.0f - percentage_of_outliers), selected_points)));
 
-    std::cout << "Required iterations: " << required_iterations << std::endl;
+    // std::cout << "Required iterations: " << required_iterations << std::endl;
 
     // Launch threads
     ThreadPool pool(thread_count);

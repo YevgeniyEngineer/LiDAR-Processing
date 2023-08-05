@@ -7,6 +7,8 @@ Lidar processing pipeline based on ROS2 Humble that consists of:
     * Obstacle cluster simplification.
 * Publishing visualisable results on `ground_pointcloud`, `obstacle_pointcloud` and `convex_polygonization` topics.
 
+![complete_video](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/complete_video.gif)
+
 ### Build and Launch Nodes
 
 Install dependencies: ROS2 Humble, PCL, Nanoflann
