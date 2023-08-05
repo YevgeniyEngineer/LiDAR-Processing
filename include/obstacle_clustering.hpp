@@ -15,6 +15,9 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+// For the adaptive clustering
+#include "adaptive_euclidean_clustering.hpp"
+
 #define DEBUG_CLUSTERING 0
 
 namespace lidar_processing
@@ -22,7 +25,8 @@ namespace lidar_processing
 enum class ClusteringAlgorithm
 {
     DBSCAN,
-    FAST_EUCLIDEAN_CLUSTERING
+    FAST_EUCLIDEAN_CLUSTERING,
+    ADAPTIVE_EUCLIDEAN_CLUSTERING
 };
 
 class ObstacleClusterer

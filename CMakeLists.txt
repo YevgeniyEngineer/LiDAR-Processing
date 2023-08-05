@@ -47,6 +47,7 @@ add_executable(processing_node
     src/obstacle_clustering.cpp
     src/conversions.cpp
     src/polygon_simplification.cpp
+    src/adaptive_euclidean_clustering.cpp
 )
 target_include_directories(processing_node
     PUBLIC

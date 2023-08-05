@@ -3,6 +3,8 @@
 #include "dbscan_clustering.hpp"
 #include "fec_clustering.hpp"
 
+#include "adaptive_euclidean_clustering.hpp"
+
 namespace lidar_processing
 {
 ObstacleClusterer::ObstacleClusterer(float neighbour_radius_threshold,
@@ -86,7 +88,8 @@ void ObstacleClusterer::clusterObstacles(
             }
         }
     }
-    else
+    else if (clustering_algorithm_ ==
+             ClusteringAlgorithm::FAST_EUCLIDEAN_CLUSTERING)
     {
         using FECPoint = clustering::FECPoint<CoordinateType, 3>;
         using FECPointCloud = clustering::FECPointCloud<CoordinateType, 3>;
@@ -130,6 +133,17 @@ void ObstacleClusterer::clusterObstacles(
                 cluster_points.reset();
             }
         }
+    }
+    else if (clustering_algorithm_ ==
+             ClusteringAlgorithm::ADAPTIVE_EUCLIDEAN_CLUSTERING)
+    {
+        const float distance_neighbour_threshold_increment =
+            neighbour_radius_threshold_ / 2.0f;
+
+        formAdaptiveEuclideanCluster(obstacle_cloud, clustered_cloud,
+                                     distance_neighbour_threshold_increment,
+                                     min_cluster_size_, max_cluster_size_,
+                                     cluster_quality_);
     }
 }
 
