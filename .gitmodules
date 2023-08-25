@@ -13,3 +13,6 @@
 [submodule "Concave-Hull"]
 	path = Concave-Hull
 	url = https://github.com/YevgeniyEngineer/Concave-Hull.git
+[submodule "Adaptive-DBSCAN"]
+	path = Adaptive-DBSCAN
+	url = https://github.com/YevgeniyEngineer/Adaptive-DBSCAN.git

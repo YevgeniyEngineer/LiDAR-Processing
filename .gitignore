@@ -33,6 +33,7 @@
 
 # Build
 build
+.cache
 
 # Temporarily disable
 test

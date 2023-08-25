@@ -68,25 +68,20 @@ class ProcessingNode : public rclcpp::Node
         qos.deadline(std::chrono::seconds(1));
 
         subscriber_ = this->create_subscription<PointCloud2>(
-            "pointcloud", qos,
-            std::bind(&ProcessingNode::process, this, std::placeholders::_1));
+            "pointcloud", qos, std::bind(&ProcessingNode::process, this, std::placeholders::_1));
 
         // Publisher nodes
-        publisher_ground_cloud_ =
-            this->create_publisher<PointCloud2>("ground_pointcloud", qos);
-        publisher_obstacle_cloud_ =
-            this->create_publisher<PointCloud2>("obstacle_pointcloud", qos);
+        publisher_ground_cloud_ = this->create_publisher<PointCloud2>("ground_pointcloud", qos);
+        publisher_obstacle_cloud_ = this->create_publisher<PointCloud2>("obstacle_pointcloud", qos);
 
-        publisher_obstacle_clustering_cloud_ =
-            this->create_publisher<PointCloud2>("clustered_pointcloud", qos);
+        publisher_obstacle_clustering_cloud_ = this->create_publisher<PointCloud2>("clustered_pointcloud", qos);
 
-        publisher_obstacle_convex_hulls_ =
-            this->create_publisher<MarkerArray>("convex_polygonization", qos);
+        publisher_obstacle_convex_hulls_ = this->create_publisher<MarkerArray>("convex_polygonization", qos);
     }
 
     ~ProcessingNode() = default;
 
-    void process(const PointCloud2& input_message);
+    void process(const PointCloud2 &input_message);
 
   private:
     // Subscriber receives raw point cloud data
@@ -97,47 +92,40 @@ class ProcessingNode : public rclcpp::Node
     rclcpp::Publisher<PointCloud2>::SharedPtr publisher_obstacle_cloud_;
 
     // Obstacle clustering
-    rclcpp::Publisher<PointCloud2>::SharedPtr
-        publisher_obstacle_clustering_cloud_;
+    rclcpp::Publisher<PointCloud2>::SharedPtr publisher_obstacle_clustering_cloud_;
 
     // Obstacle cluster polygonization
     rclcpp::Publisher<MarkerArray>::SharedPtr publisher_obstacle_convex_hulls_;
     rclcpp::Publisher<MarkerArray>::SharedPtr publisher_obstacle_concave_hulls_;
 };
 
-void ProcessingNode::process(const PointCloud2& input_message)
+void ProcessingNode::process(const PointCloud2 &input_message)
 {
     // Segmentation parameters
-    SegmentationAlgorithm segmentation_algorithm =
-        SegmentationAlgorithm::ITERATIVE_PLANE_FITTING;
+    SegmentationAlgorithm segmentation_algorithm = SegmentationAlgorithm::ITERATIVE_PLANE_FITTING;
 
     // Clustering parameters
-    ClusteringAlgorithm clustering_algorithm =
-        ClusteringAlgorithm::ADAPTIVE_EUCLIDEAN_CLUSTERING;
+    ClusteringAlgorithm clustering_algorithm = ClusteringAlgorithm::FAST_EUCLIDEAN_CLUSTERING;
 
     static constexpr float neighbour_radius_threshold = 0.3;
     static constexpr float cluster_quality = 0.5;
     static constexpr std::uint32_t min_cluster_size = 5;
-    static constexpr std::uint32_t max_cluster_size =
-        std::numeric_limits<std::uint32_t>::max();
+    static constexpr std::uint32_t max_cluster_size = std::numeric_limits<std::uint32_t>::max();
 
     // Instantiate processing objects
     auto ground_segmenter = std::make_unique<GroundSegmenter>();
     auto obstacle_clusterer = std::make_unique<ObstacleClusterer>(
-        neighbour_radius_threshold, cluster_quality, min_cluster_size,
-        max_cluster_size, clustering_algorithm);
+        neighbour_radius_threshold, cluster_quality, min_cluster_size, max_cluster_size, clustering_algorithm);
 
     // Convert PointCloud2 to pcl::PointCloud<pcl::PointXYZI>
     auto point_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZI>>();
     convertPointCloud2ToPCL(input_message, *point_cloud);
 
     // Ground segmentation
-    const auto& ground_segmentation_start_time =
-        std::chrono::high_resolution_clock::now();
+    const auto &ground_segmentation_start_time = std::chrono::high_resolution_clock::now();
 
     auto ground_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
-    auto obstacle_cloud =
-        std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
+    auto obstacle_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
 
     // RANSAC
     if (segmentation_algorithm == SegmentationAlgorithm::RANSAC)
@@ -147,68 +135,47 @@ void ProcessingNode::process(const PointCloud2& input_message)
     // Fast Segmentation
     else
     {
-        ground_segmenter->segmentGround(*point_cloud, *ground_cloud,
-                                        *obstacle_cloud);
+        ground_segmenter->segmentGround(*point_cloud, *ground_cloud, *obstacle_cloud);
     }
 
-    const auto& ground_segmentation_end_time =
-        std::chrono::high_resolution_clock::now();
+    const auto &ground_segmentation_end_time = std::chrono::high_resolution_clock::now();
     std::cout << "Ground segmentation time: "
-              << (ground_segmentation_end_time - ground_segmentation_start_time)
-                         .count() /
-                     1e9
-              << std::endl;
+              << (ground_segmentation_end_time - ground_segmentation_start_time).count() / 1e9 << std::endl;
 
-    std::cout << "Ground Pts: " << ground_cloud->size()
-              << " | Obstacle Pts: " << obstacle_cloud->size() << std::endl;
+    std::cout << "Ground Pts: " << ground_cloud->size() << " | Obstacle Pts: " << obstacle_cloud->size() << std::endl;
 
     // Obstacle clustering
-    const auto& obstacle_clustering_start_time =
-        std::chrono::high_resolution_clock::now();
+    const auto &obstacle_clustering_start_time = std::chrono::high_resolution_clock::now();
 
     std::vector<pcl::PointCloud<pcl::PointXYZ>> clustered_obstacle_cloud;
-    obstacle_clusterer->clusterObstacles(*obstacle_cloud,
-                                         clustered_obstacle_cloud);
+    obstacle_clusterer->clusterObstacles(*obstacle_cloud, clustered_obstacle_cloud);
 
-    const auto& obstacle_clustering_end_time =
-        std::chrono::high_resolution_clock::now();
+    const auto &obstacle_clustering_end_time = std::chrono::high_resolution_clock::now();
     std::cout << "Obstacle clustering time: "
-              << (obstacle_clustering_end_time - obstacle_clustering_start_time)
-                         .count() /
-                     1e9
-              << std::endl;
+              << (obstacle_clustering_end_time - obstacle_clustering_start_time).count() / 1e9 << std::endl;
 
-    std::cout << "Number of clusters: " << clustered_obstacle_cloud.size()
-              << std::endl;
+    std::cout << "Number of clusters: " << clustered_obstacle_cloud.size() << std::endl;
 
     // Polygonization
-    const auto& convex_polygon_simplification_start_time =
-        std::chrono::high_resolution_clock::now();
+    const auto &convex_polygon_simplification_start_time = std::chrono::high_resolution_clock::now();
 
     std::vector<std::vector<geom::Point<float>>> cluster_outlines;
     // findOrderedConvexOutlines(clustered_obstacle_cloud, cluster_outlines);
     findOrderedConcaveOutlines(clustered_obstacle_cloud, cluster_outlines);
 
-    const auto& convex_polygon_simplification_end_time =
-        std::chrono::high_resolution_clock::now();
+    const auto &convex_polygon_simplification_end_time = std::chrono::high_resolution_clock::now();
     std::cout << "Convex polygon simplification time: "
-              << (convex_polygon_simplification_end_time -
-                  convex_polygon_simplification_start_time)
-                         .count() /
-                     1e9
+              << (convex_polygon_simplification_end_time - convex_polygon_simplification_start_time).count() / 1e9
               << std::endl;
 
     // ***** Publish data for visualisation *****
     // Convert to ROS2 format and publish (ground segmentation)
     if (!ground_cloud->empty())
     {
-        auto output_ground_segmentation_message =
-            std::make_unique<PointCloud2>();
+        auto output_ground_segmentation_message = std::make_unique<PointCloud2>();
         output_ground_segmentation_message->header = input_message.header;
-        output_ground_segmentation_message->is_bigendian =
-            input_message.is_bigendian;
-        convertPCLToPointCloud2(*ground_cloud,
-                                *output_ground_segmentation_message);
+        output_ground_segmentation_message->is_bigendian = input_message.is_bigendian;
+        convertPCLToPointCloud2(*ground_cloud, *output_ground_segmentation_message);
         publisher_ground_cloud_->publish(*output_ground_segmentation_message);
     }
     else
@@ -217,15 +184,11 @@ void ProcessingNode::process(const PointCloud2& input_message)
     }
     if (!obstacle_cloud->empty())
     {
-        auto output_obstacle_segmentation_message =
-            std::make_unique<PointCloud2>();
+        auto output_obstacle_segmentation_message = std::make_unique<PointCloud2>();
         output_obstacle_segmentation_message->header = input_message.header;
-        output_obstacle_segmentation_message->is_bigendian =
-            input_message.is_bigendian;
-        convertPCLToPointCloud2(*obstacle_cloud,
-                                *output_obstacle_segmentation_message);
-        publisher_obstacle_cloud_->publish(
-            *output_obstacle_segmentation_message);
+        output_obstacle_segmentation_message->is_bigendian = input_message.is_bigendian;
+        convertPCLToPointCloud2(*obstacle_cloud, *output_obstacle_segmentation_message);
+        publisher_obstacle_cloud_->publish(*output_obstacle_segmentation_message);
     }
     else
     {
@@ -235,40 +198,32 @@ void ProcessingNode::process(const PointCloud2& input_message)
     // Convert to ROS2 format and publish (clustering)
     if (!clustered_obstacle_cloud.empty())
     {
-        auto output_clustered_obstacle_message =
-            std::make_unique<PointCloud2>();
+        auto output_clustered_obstacle_message = std::make_unique<PointCloud2>();
         output_clustered_obstacle_message->header = input_message.header;
-        output_clustered_obstacle_message->is_bigendian =
-            input_message.is_bigendian;
+        output_clustered_obstacle_message->is_bigendian = input_message.is_bigendian;
 
         // Convert to colorized point cloud
-        auto colorized_cloud =
-            convertClusteredCloudToColorizedCloud(clustered_obstacle_cloud);
+        auto colorized_cloud = convertClusteredCloudToColorizedCloud(clustered_obstacle_cloud);
 
         // Convert colorized cloud to PointCloud2
-        convertPCLToPointCloud2(colorized_cloud,
-                                *output_clustered_obstacle_message);
+        convertPCLToPointCloud2(colorized_cloud, *output_clustered_obstacle_message);
 
         // Publish colorized clustered cloud
-        publisher_obstacle_clustering_cloud_->publish(
-            *output_clustered_obstacle_message);
+        publisher_obstacle_clustering_cloud_->publish(*output_clustered_obstacle_message);
     }
 
     // Convert to ROS2 format and publish (polygonization)
     if (!cluster_outlines.empty())
     {
-        auto output_convex_polygonization_message =
-            std::make_unique<MarkerArray>();
-        convertPointXYZTypeToMarkerArray(
-            cluster_outlines, input_message.header.frame_id,
-            input_message.header.stamp, *output_convex_polygonization_message);
-        publisher_obstacle_convex_hulls_->publish(
-            *output_convex_polygonization_message);
+        auto output_convex_polygonization_message = std::make_unique<MarkerArray>();
+        convertPointXYZTypeToMarkerArray(cluster_outlines, input_message.header.frame_id, input_message.header.stamp,
+                                         *output_convex_polygonization_message);
+        publisher_obstacle_convex_hulls_->publish(*output_convex_polygonization_message);
     }
 }
 } // namespace lidar_processing
 
-int main(int argc, const char** const argv)
+int main(int argc, const char **const argv)
 {
     rclcpp::init(argc, argv);
     rclcpp::install_signal_handlers();
@@ -278,7 +233,7 @@ int main(int argc, const char** const argv)
     {
         rclcpp::spin(std::make_shared<lidar_processing::ProcessingNode>());
     }
-    catch (const std::exception& ex)
+    catch (const std::exception &ex)
     {
         std::cerr << "Exception: " << ex.what() << std::endl;
         success = false;
