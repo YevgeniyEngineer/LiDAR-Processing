@@ -42,6 +42,10 @@ void convertPCLToPointCloud2(const pcl::PointCloud<pcl::PointXYZRGB> &cloud_pcl,
                              sensor_msgs::msg::PointCloud2 &cloud_ros);
 
 // Does not set header and endianess!
+void convertPCLToPointCloud2(const pcl::PointCloud<pcl::PointXYZ> &cloud_pcl, sensor_msgs::msg::PointCloud2 &cloud_ros,
+                             std::uint8_t r, std::uint8_t g, std::uint8_t b);
+
+// Does not set header and endianess!
 void convertPCLToPointCloud2(const pcl::PointCloud<pcl::PointXYZRGBL> &cloud_pcl,
                              sensor_msgs::msg::PointCloud2 &cloud_ros);
 

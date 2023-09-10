@@ -112,33 +112,21 @@ GroundPlane estimatePlane(const Eigen::MatrixXf &points_xyz)
 
     // Compute the covariance matrix
     // Note this is memory efficient, but the matrix product is more expensive than computing SVD on centered points
-    const Eigen::Matrix3f covariance =
-        (centered_points.transpose() * centered_points) / static_cast<float>(number_of_points - 1);
+    Eigen::Matrix3f covariance = (centered_points.transpose() * centered_points);
+    covariance /= static_cast<float>(number_of_points - 1);
 
     // Compute the SVD of the covariance matrix
-    const Eigen::JacobiSVD<Eigen::MatrixXf> svd(covariance, Eigen::ComputeThinV);
-
-    if (svd.info() != Eigen::Success)
-    {
-        throw std::runtime_error("Eigenvalue decomposition failed");
-    }
+    const Eigen::JacobiSVD<Eigen::Matrix3f> svd(covariance, Eigen::ComputeThinV);
 
     // The normal of the plane is the unit singular vector corresponding to the
     // smallest singular value, which is the last column in the V matrix.
     const Eigen::Vector3f normal = svd.matrixV().col(2);
 
     // Plane equation is: a*x + b*y + c*z = d
-    float a = normal(0);
-    float b = normal(1);
-    float c = normal(2);
-    float d = normal.dot(centroid);
-
-    // Normalize the normal vector for numerical stability.
-    const float normalization_factor = 1.0 / std::sqrt(a * a + b * b + c * c);
-    a *= normalization_factor;
-    b *= normalization_factor;
-    c *= normalization_factor;
-    d *= normalization_factor;
+    const float a = normal(0);
+    const float b = normal(1);
+    const float c = normal(2);
+    const float d = normal.dot(centroid);
 
     // Get plane parameters
     return GroundPlane(a, b, c, d);
