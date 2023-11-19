@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdint>
 #include <iostream>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -30,6 +31,37 @@ struct PointXYZIL final
     SegmentationLabel label;
 };
 
+struct GraphNode final
+{
+    PointXYZIL point;
+    SegmentationLabel label;
+    float unary_potential;
+};
+
+struct GraphCell final
+{
+    // Points that fall into this cell
+    std::vector<PointXYZIL> points;
+
+    // The label assigned to this cell
+    SegmentationLabel label;
+
+    // Potential based on the initial segmentation
+    float unary_potential;
+};
+
+struct GraphEdge final
+{
+    // Index of the start node
+    std::uint32_t node_1_index;
+
+    // Index of the end node
+    std::uint32_t node_2_index;
+
+    // Potential between two adjacent nodes
+    float pairwise_potential;
+};
+
 class ChannelBasedGroundSegmenter final
 {
   public:
@@ -46,6 +78,7 @@ class ChannelBasedGroundSegmenter final
     // static constexpr std::uint32_t NUMBER_OF_CHANNELS{90U};
 
     static constexpr float CELL_RESOLUTION_M{1.5F};
+    static constexpr std::uint32_t NUMBER_OF_CELLS{200U};
 
     struct CellBoundary final
     {
@@ -66,6 +99,25 @@ class ChannelBasedGroundSegmenter final
           threshold_ground_height_m_{threshold_ground_height_m}, threshold_height_m_{threshold_height_m},
           height_difference_parameter_m_{height_difference_parameter_m}
     {
+        static constexpr std::uint32_t APPROXIMATE_MAX_PTS_IN_CHANNEL{1500U};
+        static constexpr std::uint32_t APPROXIMATE_MAX_PTS_IN_CELL{100U};
+
+        for (auto &channel : polar_grid_)
+        {
+            for (auto &cell : channel)
+            {
+                cell.reserve(APPROXIMATE_MAX_PTS_IN_CELL);
+            }
+        }
+
+        for (auto &channel : channel_points_)
+        {
+            channel.reserve(APPROXIMATE_MAX_PTS_IN_CHANNEL);
+        }
+
+        graph_cells_.reserve(NUMBER_OF_CHANNELS * NUMBER_OF_CELLS);
+        graph_edges_.reserve(NUMBER_OF_CHANNELS * NUMBER_OF_CELLS);
+        adjacency_list_.reserve(NUMBER_OF_CHANNELS * NUMBER_OF_CELLS);
     }
 
     ~ChannelBasedGroundSegmenter()
@@ -131,8 +183,83 @@ class ChannelBasedGroundSegmenter final
     const float height_difference_parameter_m_;
 
     std::vector<PointXYZIL> input_cloud_;
+
+    // Channel based segmentation
     std::array<std::vector<PointXYZIL>, NUMBER_OF_CHANNELS> channel_points_;
     std::array<std::vector<CellBoundary>, NUMBER_OF_CHANNELS> cell_indices_;
+
+    // Polar grid
+    std::array<std::array<std::vector<PointXYZIL>, NUMBER_OF_CELLS>, NUMBER_OF_CHANNELS> polar_grid_;
+
+    // Graph representation for MRF
+    std::vector<GraphCell> graph_cells_; // Graph cell contains multiple points
+    std::vector<GraphEdge> graph_edges_; // Edges connect the graph cells
+    std::unordered_map<std::uint32_t, std::vector<std::uint32_t>> adjacency_list_;
+
+    void buildGraph()
+    {
+        // Clear the previous graph
+        graph_cells_.clear();
+        graph_edges_.clear();
+        adjacency_list_.clear();
+
+        // Each cell in the polar grid becomes a node in the graph
+        std::uint32_t node_index = 0U;
+        for (std::uint32_t channel_index = 0U; channel_index < NUMBER_OF_CHANNELS; ++channel_index)
+        {
+            for (std::uint32_t cell_index = 0U; cell_index < NUMBER_OF_CELLS; ++cell_index)
+            {
+                // Create a node for each cell
+                GraphCell node;
+                node.points = polar_grid_[channel_index][cell_index];
+                node.label = SegmentationLabel::DOUBT; // TODO: Calculate based on initial segmentation
+                node.unary_potential = 0.0F;           // TODO: Calculate unary potential based on the criteria
+
+                graph_cells_.push_back(node);
+
+                // Connect each node to its four neighbouring cells
+                if (cell_index > 0U)
+                {
+                    const std::uint32_t back_node_index = (channel_index * NUMBER_OF_CELLS) + (cell_index - 1U);
+
+                    // TODO: Set the correct pairwise potential
+                    graph_edges_.push_back({node_index, back_node_index, 0.0F});
+                    adjacency_list_[node_index].push_back(back_node_index);
+                }
+
+                if (cell_index < (NUMBER_OF_CELLS - 1U))
+                {
+                    const std::uint32_t front_node_index = (channel_index * NUMBER_OF_CELLS) + (cell_index + 1U);
+
+                    // TODO: Set the correct pairwise potential
+                    graph_edges_.push_back({node_index, front_node_index, 0.0F});
+                    adjacency_list_[node_index].push_back(front_node_index);
+                }
+
+                // Left and right neighbour nodes wrap around
+                const std::uint32_t left_channel_index =
+                    (channel_index == 0U) ? (NUMBER_OF_CHANNELS - 1U) : (channel_index - 1U);
+
+                const std::uint32_t right_channel_index =
+                    (channel_index == (NUMBER_OF_CHANNELS - 1U)) ? 0U : (channel_index + 1U);
+
+                const std::uint32_t left_node_index = (left_channel_index * NUMBER_OF_CELLS) + cell_index;
+
+                const std::uint32_t right_node_index = (right_channel_index * NUMBER_OF_CELLS) + cell_index;
+
+                graph_edges_.push_back({node_index, left_node_index, 0.0F});
+                graph_edges_.push_back({node_index, right_node_index, 0.0F});
+
+                adjacency_list_[node_index].push_back(left_node_index);
+                adjacency_list_[node_index].push_back(right_node_index);
+
+                // Increment the node index for the next cell
+                ++node_index;
+            }
+        }
+
+        std::cout << "Number of elements in adjacency list: " << adjacency_list_.size() << std::endl;
+    }
 
     void partitionIntoChannels()
     {
@@ -156,6 +283,42 @@ class ChannelBasedGroundSegmenter final
             const std::uint32_t channel_index = static_cast<std::uint32_t>(azimuth_deg / CHANNEL_RESOLUTION_DEG);
             channel_points_[channel_index].push_back(point);
         }
+
+        // Sort points in ascending radial order
+        for (std::uint32_t channel_index = 0U; channel_index < NUMBER_OF_CHANNELS; ++channel_index)
+        {
+            auto &channel = channel_points_[channel_index];
+
+            // Sort points in by distance from the sensor
+            std::sort(channel.begin(), channel.end(), [](const PointXYZIL &p1, const PointXYZIL &p2) noexcept -> bool {
+                return ((p1.x * p1.x) + (p1.y * p1.y)) < ((p2.x * p2.x) + (p2.y * p2.y));
+            });
+
+            // Populate polar grid cells
+            auto &grid_channel = polar_grid_[channel_index];
+
+            // Clean old channel's points
+            for (auto &polar_grid_cell : grid_channel)
+            {
+                polar_grid_cell.clear();
+            }
+
+            // Add new points to the polar grid
+            for (auto &point : channel)
+            {
+                // Distance of the point from the origin
+                const float point_distance = std::sqrt(point.x * point.x + point.y * point.y);
+
+                // Calculate the radial cell index for this point
+                const std::uint32_t cell_index =
+                    std::min(static_cast<std::uint32_t>(point_distance / CELL_RESOLUTION_M), NUMBER_OF_CELLS - 1U);
+
+                grid_channel[cell_index].push_back(point);
+            }
+        }
+
+        // Build the adjacency matrix
+        buildGraph();
     }
 
     bool checkNoise(const PointXYZIL &point)
