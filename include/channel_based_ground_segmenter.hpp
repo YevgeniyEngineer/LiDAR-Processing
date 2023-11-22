@@ -5,7 +5,9 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <execution>
 #include <iostream>
+#include <limits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -62,16 +64,26 @@ struct GraphEdge final
     float pairwise_potential;
 };
 
+struct Message final
+{
+    float to_ground;
+    float to_obstacle;
+};
+
 class ChannelBasedGroundSegmenter final
 {
   public:
+    // 0.5 degree increments
+    static constexpr float CHANNEL_RESOLUTION_DEG{0.5F};
+    static constexpr std::uint32_t NUMBER_OF_CHANNELS{720U};
+
     // 1 degree increments
     // static constexpr float CHANNEL_RESOLUTION_DEG{1.0F};
     // static constexpr std::uint32_t NUMBER_OF_CHANNELS{360U};
 
     // 2 degree increments
-    static constexpr float CHANNEL_RESOLUTION_DEG{2.0F};
-    static constexpr std::uint32_t NUMBER_OF_CHANNELS{180U};
+    // static constexpr float CHANNEL_RESOLUTION_DEG{2.0F};
+    // static constexpr std::uint32_t NUMBER_OF_CHANNELS{180U};
 
     // 4 degree increments
     // static constexpr float CHANNEL_RESOLUTION_DEG{4.0F};
@@ -92,7 +104,7 @@ class ChannelBasedGroundSegmenter final
     ChannelBasedGroundSegmenter &operator=(ChannelBasedGroundSegmenter &&other) = delete;
 
     ChannelBasedGroundSegmenter(float vehicle_height = 1.73F, float threshold_distance_m = 70.0F,
-                                float threshold_gradient_deg = 20.0F, float threshold_ground_height_m = 0.2F,
+                                float threshold_gradient_deg = 20.0F, float threshold_ground_height_m = 0.15F,
                                 float threshold_height_m = 0.5F, float height_difference_parameter_m = 0.1F)
         : vehicle_height_{vehicle_height}, threshold_distance_m_{threshold_distance_m},
           threshold_gradient_rad_{threshold_gradient_deg * M_PIf32 / 180.0F},
@@ -148,18 +160,23 @@ class ChannelBasedGroundSegmenter final
         {
             for (const auto &point : channel)
             {
-                if (point.label == SegmentationLabel::GROUND)
+                switch (point.label)
                 {
+                case SegmentationLabel::GROUND: {
                     ground_cloud.emplace_back(point.x, point.y, point.z);
+                    break;
                 }
-                else if (point.label == SegmentationLabel::OBSTACLE)
-                {
+                case SegmentationLabel::OBSTACLE: {
                     obstacle_cloud.emplace_back(point.x, point.y, point.z);
+                    break;
                 }
-                else
-                {
-                    // Doubt point
+                case SegmentationLabel::DOUBT: {
                     // std::cout << "Found doubt point.\n";
+                    [[fallthrough]];
+                }
+                default: {
+                    break;
+                }
                 }
             }
         }
@@ -195,6 +212,133 @@ class ChannelBasedGroundSegmenter final
     std::vector<GraphCell> graph_cells_; // Graph cell contains multiple points
     std::vector<GraphEdge> graph_edges_; // Edges connect the graph cells
     std::unordered_map<std::uint32_t, std::vector<std::uint32_t>> adjacency_list_;
+    std::unordered_map<std::uint32_t, std::vector<Message>> messages_;
+
+    // Step 1 of Loopy Belief Propagation
+    void initializeMessages()
+    {
+        // Initialize messages with uniform distribution
+        for (const auto &[node_index, neighbour_nodes] : adjacency_list_)
+        {
+            messages_[node_index] = std::vector<Message>(neighbour_nodes.size(), {0.0F, 0.0F});
+        }
+    }
+
+    // Step 2 of Loopy Belief Propagation
+    void updateMessages()
+    {
+        // Parameters for message passing - TODO: define elsewhere
+        static constexpr float damping_factor{0.5F};       // Between 0 and 1
+        static constexpr std::uint32_t max_iterations{4U}; // Maximum iterations for LBP
+        static constexpr float delta{0.001F};              // For convergence checks
+
+        for (std::uint32_t iteration = 0U; iteration < max_iterations; ++iteration)
+        {
+            // Maximum change in messages for convergence check
+            float max_delta = 0.0F;
+
+            for (const auto &[node_index, neighbour_nodes] : adjacency_list_)
+            {
+                for (std::uint32_t i = 0U; i < neighbour_nodes.size(); ++i)
+                {
+                    const auto neighbour_index = neighbour_nodes[i];
+                    auto &message = messages_[node_index][i];
+
+                    // Compute new message values
+                    float new_to_ground = 0.0F;   // TODO: Compute message for ground
+                    float new_to_obstacle = 0.0F; // TODO: Compute message for obstacle
+
+                    // Damping update to avoid oscillations
+                    message.to_ground = (damping_factor * message.to_ground) + (1.0F - damping_factor) * new_to_ground;
+                    message.to_obstacle =
+                        (damping_factor * message.to_obstacle) + (1.0F - damping_factor) * new_to_obstacle;
+
+                    // Check for convergence
+                    float message_delta =
+                        std::fabs(new_to_ground - message.to_ground) + std::fabs(new_to_obstacle - message.to_obstacle);
+                    max_delta = std::max(max_delta, message_delta);
+                }
+            }
+
+            // If changes are below a threshold, assume convergence
+            if (max_delta < delta)
+            {
+                break;
+            }
+        }
+    }
+
+    // Step 3 of Loopy Belief Propagation
+    void computeBeliefs()
+    {
+        // Compute final beliefs for each node
+        for (auto &cell : graph_cells_)
+        {
+            // Initialize belief based on unary potentials
+            auto belief_ground = cell.unary_potential;
+            auto belief_obstacle = cell.unary_potential;
+
+            // Aggregate incoming messages from neighbours
+            std::uint32_t node_index = 0U; // TODO: Node index corresponding to cell
+            const auto &incoming_messages = messages_[node_index];
+
+            for (const auto &message : incoming_messages)
+            {
+                belief_ground += message.to_ground;
+                belief_obstacle += message.to_obstacle;
+            }
+
+            // Determine the final label based on beliefs
+            cell.label = (belief_ground < belief_obstacle) ? SegmentationLabel::GROUND : SegmentationLabel::OBSTACLE;
+        }
+    }
+
+    void runLoopyBeliefPropagation()
+    {
+        initializeMessages();
+        updateMessages();
+        computeBeliefs();
+    }
+
+    // Helper function to calculate the data cost
+    float calculateDataCost(const GraphCell &cell)
+    {
+        // Category 1: No points inside the cell
+        if (cell.points.empty())
+        {
+            return 0.0F; // The cost is zero if no information is available
+        }
+
+        // Category 2 and 3: Points inside the cell
+        // Calculate the lowest and highest z values within the cell
+        float lowest_z = std::numeric_limits<float>::max();
+        float highest_z = std::numeric_limits<float>::lowest();
+        for (const auto &point : cell.points)
+        {
+            if (point.z > lowest_z)
+            {
+                lowest_z = point.z;
+            }
+            if (point.z > highest_z)
+            {
+                highest_z = point.z;
+            }
+        }
+
+        // Get the reference value g(v(i))
+        float reference_height = lowest_z; // TODO: calculate this value
+
+        // Calculate the cost based on height difference
+        // TODO: Fix this formula: D(f(v(i))) = min(f(v(i)) - g(v(i)), tau), tau - truncation value
+        const float cost = std::min(std::fabs(highest_z - reference_height), std::fabs(lowest_z - reference_height));
+        return cost;
+    }
+
+    float calculateSmoothnessCost(const SegmentationLabel label_1, const SegmentationLabel label_2)
+    {
+        // TODO
+        return 0.0F;
+    }
 
     void buildGraph()
     {
@@ -318,7 +462,9 @@ class ChannelBasedGroundSegmenter final
         }
 
         // Build the adjacency matrix
-        buildGraph();
+        // buildGraph();
+
+        // TODO: Run Loopy Belief Propagation
     }
 
     bool checkNoise(const PointXYZIL &point)
@@ -405,9 +551,10 @@ class ChannelBasedGroundSegmenter final
         }
     }
 
-    void correctDoubtPoints(std::vector<PointXYZIL> &channel, std::uint32_t last_index, SegmentationLabel label)
+    void correctDoubtPoints(std::vector<PointXYZIL> &channel, const std::uint32_t last_index,
+                            const SegmentationLabel label)
     {
-        for (std::int32_t j = last_index - 1; j >= 0; --j)
+        for (std::int32_t j = static_cast<std::int32_t>(last_index) - 1; j >= 0; --j)
         {
             auto &point_label = channel[static_cast<std::uint32_t>(j)].label;
             if (point_label == SegmentationLabel::DOUBT)
@@ -479,6 +626,9 @@ class ChannelBasedGroundSegmenter final
         {
             segmentChannel(channel);
         }
+
+        // std::for_each(std::execution::par, channel_points_.begin(), channel_points_.end(),
+        //               [this](auto &channel) -> void { segmentChannel(channel); });
     }
 
     void channelBasedMarkovRandomFieldAndLoopyBeliefPropagation()

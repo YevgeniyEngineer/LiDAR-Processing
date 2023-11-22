@@ -31,7 +31,8 @@ enum class SegmentationAlgorithm
 {
     RANSAC,
     ITERATIVE_PLANE_FITTING,
-    RULE_BASED_APPROACH
+    RULE_BASED_APPROACH,
+    LINE_FIT_RANSAC
 };
 
 enum class SegmentationLabels

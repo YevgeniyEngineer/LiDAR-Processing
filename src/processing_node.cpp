@@ -6,6 +6,7 @@
 #include "conversions.hpp"
 #include "ground_segmentation.hpp"
 #include "internal_types.hpp"
+#include "line_fit_ransac_ground_segmenter.hpp"
 #include "obstacle_clustering.hpp"
 #include "polygon_simplification.hpp"
 #include "ransac_ground_segmentation.hpp"
@@ -101,12 +102,13 @@ class ProcessingNode : public rclcpp::Node
 
     // Ground segmentation
     ChannelBasedGroundSegmenter channel_based_ground_segmenter_;
+    LineFitRANSACGroundSegmenter line_fit_ransac_ground_segmenter_;
 };
 
 void ProcessingNode::process(const PointCloud2 &input_message)
 {
     // Segmentation parameters
-    SegmentationAlgorithm segmentation_algorithm = SegmentationAlgorithm::RULE_BASED_APPROACH;
+    SegmentationAlgorithm segmentation_algorithm = SegmentationAlgorithm::LINE_FIT_RANSAC;
 
     // Clustering parameters
     ClusteringAlgorithm clustering_algorithm = ClusteringAlgorithm::FAST_EUCLIDEAN_CLUSTERING;
@@ -148,6 +150,10 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     {
         channel_based_ground_segmenter_.setInputCloud(point_cloud->points);
         channel_based_ground_segmenter_.segment(*ground_cloud_2, *obstacle_cloud_2);
+    }
+    else if (segmentation_algorithm == SegmentationAlgorithm::LINE_FIT_RANSAC)
+    {
+        line_fit_ransac_ground_segmenter_.setInputCloud(point_cloud->points);
     }
     else
     {
