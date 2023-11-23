@@ -213,6 +213,17 @@ class LineFitRANSACGroundSegmenter final
 
   private:
     std::array<std::vector<ProcessingPoint>, NUMBER_OF_SLICES> slices_;
+
+    float orthogonal_distance_threshold_{0.1F};
+    std::uint8_t number_of_threads_{8U};
+
+    void constrainedLineRANSAC(const std::vector<ProcessingPoint> &slice)
+    {
+    }
+
+    void segmentImpl()
+    {
+    }
 };
 } // namespace lidar_processing
 
