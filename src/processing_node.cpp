@@ -31,6 +31,7 @@
 
 // PCL
 #include <pcl/conversions.h>
+#include <pcl/filters/voxel_grid.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
@@ -124,11 +125,19 @@ void ProcessingNode::process(const PointCloud2 &input_message)
         neighbour_radius_threshold, cluster_quality, min_cluster_size, max_cluster_size, clustering_algorithm);
 
     // Convert PointCloud2 to pcl::PointCloud<pcl::PointXYZI>
-    auto point_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZI>>();
+    auto point_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
     convertPointCloud2ToPCL(input_message, *point_cloud);
 
+    auto downsampled_point_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZI>>();
+    downsampled_point_cloud->points.reserve(point_cloud->points.size());
+
+    pcl::VoxelGrid<pcl::PointXYZI> voxel_grid_downsampler;
+    voxel_grid_downsampler.setInputCloud(point_cloud);
+    voxel_grid_downsampler.setLeafSize(0.06f, 0.06f, 0.06f);
+    voxel_grid_downsampler.filter(*downsampled_point_cloud);
+
     // Ground segmentation
-    const auto &ground_segmentation_start_time = std::chrono::high_resolution_clock::now();
+    const auto ground_segmentation_start_time = std::chrono::high_resolution_clock::now();
 
     auto ground_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
     auto obstacle_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
@@ -139,21 +148,21 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     // RANSAC
     if (segmentation_algorithm == SegmentationAlgorithm::RANSAC)
     {
-        segmentGroundRANSAC(*point_cloud, *ground_cloud, *obstacle_cloud);
+        segmentGroundRANSAC(*downsampled_point_cloud, *ground_cloud, *obstacle_cloud);
     }
     // Fast Segmentation
     else if (segmentation_algorithm == SegmentationAlgorithm::ITERATIVE_PLANE_FITTING)
     {
-        ground_segmenter->segmentGround(*point_cloud, *ground_cloud, *obstacle_cloud);
+        ground_segmenter->segmentGround(*downsampled_point_cloud, *ground_cloud, *obstacle_cloud);
     }
     else if (segmentation_algorithm == SegmentationAlgorithm::RULE_BASED_APPROACH)
     {
-        channel_based_ground_segmenter_.setInputCloud(point_cloud->points);
+        channel_based_ground_segmenter_.setInputCloud(downsampled_point_cloud->points);
         channel_based_ground_segmenter_.segment(*ground_cloud_2, *obstacle_cloud_2);
     }
     else if (segmentation_algorithm == SegmentationAlgorithm::LINE_FIT_RANSAC)
     {
-        line_fit_ransac_ground_segmenter_.setInputCloud(point_cloud->points);
+        line_fit_ransac_ground_segmenter_.setInputCloud(downsampled_point_cloud->points);
     }
     else
     {
