@@ -108,14 +108,14 @@ class ProcessingNode : public rclcpp::Node
 void ProcessingNode::process(const PointCloud2 &input_message)
 {
     // Segmentation parameters
-    SegmentationAlgorithm segmentation_algorithm = SegmentationAlgorithm::LINE_FIT_RANSAC;
+    SegmentationAlgorithm segmentation_algorithm = SegmentationAlgorithm::ITERATIVE_PLANE_FITTING;
 
     // Clustering parameters
-    ClusteringAlgorithm clustering_algorithm = ClusteringAlgorithm::FAST_EUCLIDEAN_CLUSTERING;
+    ClusteringAlgorithm clustering_algorithm = ClusteringAlgorithm::DBSCAN;
 
     static constexpr float neighbour_radius_threshold = 0.3;
     static constexpr float cluster_quality = 0.5;
-    static constexpr std::uint32_t min_cluster_size = 5;
+    static constexpr std::uint32_t min_cluster_size = 4;
     static constexpr std::uint32_t max_cluster_size = std::numeric_limits<std::uint32_t>::max();
 
     // Instantiate processing objects

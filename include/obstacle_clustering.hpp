@@ -34,7 +34,7 @@ class ObstacleClusterer
 {
   public:
     ObstacleClusterer(float neighbour_radius_threshold = 0.5, float cluster_quality = 0.5,
-                      std::uint32_t min_cluster_size = 1,
+                      std::uint32_t min_cluster_size = 3,
                       std::uint32_t max_cluster_size = std::numeric_limits<std::uint32_t>::max(),
                       ClusteringAlgorithm clustering_algorithm = ClusteringAlgorithm::DBSCAN);
 
