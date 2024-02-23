@@ -2,9 +2,11 @@
 #include "convex_hull.hpp"
 
 // Processing
+#include "channel_based_ground_segmenter.hpp"
 #include "conversions.hpp"
 #include "ground_segmentation.hpp"
 #include "internal_types.hpp"
+#include "line_fit_ransac_ground_segmenter.hpp"
 #include "obstacle_clustering.hpp"
 #include "polygon_simplification.hpp"
 #include "ransac_ground_segmentation.hpp"
@@ -29,6 +31,7 @@
 
 // PCL
 #include <pcl/conversions.h>
+#include <pcl/filters/voxel_grid.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
@@ -97,6 +100,10 @@ class ProcessingNode : public rclcpp::Node
     // Obstacle cluster polygonization
     rclcpp::Publisher<MarkerArray>::SharedPtr publisher_obstacle_convex_hulls_;
     rclcpp::Publisher<MarkerArray>::SharedPtr publisher_obstacle_concave_hulls_;
+
+    // Ground segmentation
+    ChannelBasedGroundSegmenter channel_based_ground_segmenter_;
+    LineFitRANSACGroundSegmenter line_fit_ransac_ground_segmenter_;
 };
 
 void ProcessingNode::process(const PointCloud2 &input_message)
@@ -105,11 +112,11 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     SegmentationAlgorithm segmentation_algorithm = SegmentationAlgorithm::ITERATIVE_PLANE_FITTING;
 
     // Clustering parameters
-    ClusteringAlgorithm clustering_algorithm = ClusteringAlgorithm::FAST_EUCLIDEAN_CLUSTERING;
+    ClusteringAlgorithm clustering_algorithm = ClusteringAlgorithm::DBSCAN;
 
     static constexpr float neighbour_radius_threshold = 0.3;
     static constexpr float cluster_quality = 0.5;
-    static constexpr std::uint32_t min_cluster_size = 5;
+    static constexpr std::uint32_t min_cluster_size = 4;
     static constexpr std::uint32_t max_cluster_size = std::numeric_limits<std::uint32_t>::max();
 
     // Instantiate processing objects
@@ -118,24 +125,48 @@ void ProcessingNode::process(const PointCloud2 &input_message)
         neighbour_radius_threshold, cluster_quality, min_cluster_size, max_cluster_size, clustering_algorithm);
 
     // Convert PointCloud2 to pcl::PointCloud<pcl::PointXYZI>
-    auto point_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZI>>();
+    auto point_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
     convertPointCloud2ToPCL(input_message, *point_cloud);
 
+    auto downsampled_point_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZI>>();
+    downsampled_point_cloud->points.reserve(point_cloud->points.size());
+
+    pcl::VoxelGrid<pcl::PointXYZI> voxel_grid_downsampler;
+    voxel_grid_downsampler.setInputCloud(point_cloud);
+    voxel_grid_downsampler.setLeafSize(0.06f, 0.06f, 0.06f);
+    voxel_grid_downsampler.filter(*downsampled_point_cloud);
+
     // Ground segmentation
-    const auto &ground_segmentation_start_time = std::chrono::high_resolution_clock::now();
+    const auto ground_segmentation_start_time = std::chrono::high_resolution_clock::now();
 
     auto ground_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
     auto obstacle_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
 
+    auto ground_cloud_2 = std::make_unique<pcl::PointCloud<pcl::PointXYZ>>();
+    auto obstacle_cloud_2 = std::make_unique<pcl::PointCloud<pcl::PointXYZ>>();
+
     // RANSAC
     if (segmentation_algorithm == SegmentationAlgorithm::RANSAC)
     {
-        segmentGroundRANSAC(*point_cloud, *ground_cloud, *obstacle_cloud);
+        segmentGroundRANSAC(*downsampled_point_cloud, *ground_cloud, *obstacle_cloud);
     }
     // Fast Segmentation
+    else if (segmentation_algorithm == SegmentationAlgorithm::ITERATIVE_PLANE_FITTING)
+    {
+        ground_segmenter->segmentGround(*downsampled_point_cloud, *ground_cloud, *obstacle_cloud);
+    }
+    else if (segmentation_algorithm == SegmentationAlgorithm::RULE_BASED_APPROACH)
+    {
+        channel_based_ground_segmenter_.setInputCloud(downsampled_point_cloud->points);
+        channel_based_ground_segmenter_.segment(*ground_cloud_2, *obstacle_cloud_2);
+    }
+    else if (segmentation_algorithm == SegmentationAlgorithm::LINE_FIT_RANSAC)
+    {
+        line_fit_ransac_ground_segmenter_.setInputCloud(downsampled_point_cloud->points);
+    }
     else
     {
-        ground_segmenter->segmentGround(*point_cloud, *ground_cloud, *obstacle_cloud);
+        throw std::runtime_error("Unknown segmentation algorithm");
     }
 
     const auto &ground_segmentation_end_time = std::chrono::high_resolution_clock::now();
@@ -178,16 +209,33 @@ void ProcessingNode::process(const PointCloud2 &input_message)
         convertPCLToPointCloud2(*ground_cloud, *output_ground_segmentation_message);
         publisher_ground_cloud_->publish(*output_ground_segmentation_message);
     }
+    else if (!ground_cloud_2->empty())
+    {
+        auto output_ground_segmentation_message = std::make_unique<PointCloud2>();
+        output_ground_segmentation_message->header = input_message.header;
+        output_ground_segmentation_message->is_bigendian = input_message.is_bigendian;
+        convertPCLToPointCloud2(*ground_cloud_2, *output_ground_segmentation_message, 0, 255, 0);
+        publisher_ground_cloud_->publish(*output_ground_segmentation_message);
+    }
     else
     {
         std::cout << "No ground points!" << std::endl;
     }
+
     if (!obstacle_cloud->empty())
     {
         auto output_obstacle_segmentation_message = std::make_unique<PointCloud2>();
         output_obstacle_segmentation_message->header = input_message.header;
         output_obstacle_segmentation_message->is_bigendian = input_message.is_bigendian;
         convertPCLToPointCloud2(*obstacle_cloud, *output_obstacle_segmentation_message);
+        publisher_obstacle_cloud_->publish(*output_obstacle_segmentation_message);
+    }
+    else if (!obstacle_cloud_2->empty())
+    {
+        auto output_obstacle_segmentation_message = std::make_unique<PointCloud2>();
+        output_obstacle_segmentation_message->header = input_message.header;
+        output_obstacle_segmentation_message->is_bigendian = input_message.is_bigendian;
+        convertPCLToPointCloud2(*obstacle_cloud_2, *output_obstacle_segmentation_message, 255, 0, 0);
         publisher_obstacle_cloud_->publish(*output_obstacle_segmentation_message);
     }
     else
