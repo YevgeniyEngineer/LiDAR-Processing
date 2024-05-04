@@ -20,8 +20,8 @@
  * SOFTWARE.
  */
 
-#ifndef CONTAINERS_PRIORITY_QUEUE_HPP
-#define CONTAINERS_PRIORITY_QUEUE_HPP
+#ifndef CONTAINERS__PRIORITY_QUEUE_HPP
+#define CONTAINERS__PRIORITY_QUEUE_HPP
 
 #include "vector.hpp"
 
@@ -134,4 +134,4 @@ template <typename T, typename Comparator> const T &PriorityQueue<T, Comparator>
 
 } // namespace containers
 
-#endif // CONTAINERS_PRIORITY_QUEUE_HPP
+#endif // CONTAINERS__PRIORITY_QUEUE_HPP

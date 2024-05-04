@@ -20,8 +20,8 @@
  * SOFTWARE.
  */
 
-#ifndef CONTAINERS_STACK_HPP
-#define CONTAINERS_STACK_HPP
+#ifndef CONTAINERS__STACK_HPP
+#define CONTAINERS__STACK_HPP
 
 #include <cstddef>
 #include <memory>
@@ -193,4 +193,4 @@ template <typename T> void Stack<T>::clear() noexcept
 
 } // namespace containers
 
-#endif // CONTAINERS_STACK_HPP
+#endif // CONTAINERS__STACK_HPP

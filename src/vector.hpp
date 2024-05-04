@@ -20,8 +20,8 @@
  * SOFTWARE.
  */
 
-#ifndef CONTAINERS_VECTOR_HPP
-#define CONTAINERS_VECTOR_HPP
+#ifndef CONTAINERS__VECTOR_HPP
+#define CONTAINERS__VECTOR_HPP
 
 #include <algorithm>
 #include <cstddef>
@@ -750,4 +750,4 @@ void swap(Vector<T, Allocator> &first,
 
 } // namespace containers
 
-#endif // CONTAINERS_VECTOR_HPP
+#endif // CONTAINERS__VECTOR_HPP

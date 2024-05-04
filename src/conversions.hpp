@@ -20,8 +20,8 @@
  * SOFTWARE.
  */
 
-#ifndef CONVERSIONS
-#define CONVERSIONS
+#ifndef LIDAR_PROCESSING__CONVERSIONS_HPP
+#define LIDAR_PROCESSING__CONVERSIONS_HPP
 
 // STL
 #include <cstdint>
@@ -121,4 +121,4 @@ void convertPointXYZTypeToMarkerArray(const std::vector<std::vector<PointT>> &hu
 
 } // namespace lidar_processing
 
-#endif // CONVERSIONS
+#endif // LIDAR_PROCESSING__CONVERSIONS_HPP

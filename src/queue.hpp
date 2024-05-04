@@ -20,8 +20,8 @@
  * SOFTWARE.
  */
 
-#ifndef CONTAINERS_QUEUE_HPP
-#define CONTAINERS_QUEUE_HPP
+#ifndef CONTAINERS__QUEUE_HPP
+#define CONTAINERS__QUEUE_HPP
 
 #include <cstddef>
 #include <memory>
@@ -215,4 +215,4 @@ template <typename T> void Queue<T>::clear() noexcept
 }
 } // namespace containers
 
-#endif // CONTAINERS_QUEUE_HPP
+#endif // CONTAINERS__QUEUE_HPP
