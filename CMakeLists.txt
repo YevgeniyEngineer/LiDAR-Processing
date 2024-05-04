@@ -43,6 +43,8 @@ target_link_libraries(point_cloud_publisher_node
 
 # build rules for executable "processing_node"
 add_executable(processing_node
+    src/segmentation.cpp
+    ###
     src/processing_node.cpp
     src/ground_segmentation.cpp
     src/obstacle_clustering.cpp
