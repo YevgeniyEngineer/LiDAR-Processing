@@ -90,6 +90,7 @@
     },
     "cmake.configureOnOpen": true,
     "cSpell.words": [
-        "Clusterer"
+        "Clusterer",
+        "KDTREE"
     ]
 }
