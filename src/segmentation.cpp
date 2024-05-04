@@ -39,13 +39,13 @@ void Segmenter::form_planar_partitions(const pcl::PointCloud<PointT> &cloud_in,
               });
 
     const std::size_t number_of_points_within_segment = number_of_points / configuration_.number_of_planar_partitions;
-    std::size_t index_low = 0U;
+    std::size_t index_low = 0UL;
     std::size_t index_high = number_of_points_within_segment;
 
     cloud_segments.reserve(configuration_.number_of_planar_partitions);
     cloud_segments.clear();
 
-    for (std::size_t segment_index = 0U; segment_index < configuration_.number_of_planar_partitions; ++segment_index)
+    for (std::size_t segment_index = 0UL; segment_index < configuration_.number_of_planar_partitions; ++segment_index)
     {
         cloud_segments.resize(cloud_segments.size() + 1UL);
         auto &cloud_segment = cloud_segments.back();
@@ -63,6 +63,75 @@ void Segmenter::form_planar_partitions(const pcl::PointCloud<PointT> &cloud_in,
 
         index_low = index_high;
         index_high = std::min(index_low + number_of_points_within_segment, number_of_points);
+    }
+}
+
+void Segmenter::extract_initial_seeds(const containers::Vector<Point> &cloud_segment,
+                                      containers::Vector<std::uint32_t> &ground_indices)
+{
+    ground_indices.clear();
+
+    if (cloud_segment.empty())
+    {
+        return;
+    }
+
+    const std::size_t number_of_points = cloud_segment.size();
+
+    sorted_indices_.resize(number_of_points);
+    std::iota(sorted_indices_.begin(), sorted_indices_.end(), 0U);
+
+    std::sort(sorted_indices_.begin(), sorted_indices_.end(),
+              [&cloud_segment](const auto &index_1, const auto &index_2) -> bool {
+                  return cloud_segment[index_1].z < cloud_segment[index_2].z;
+              });
+
+    // -1.5 to account for points below ground level
+    const float z_min_lowest_point_representative = -1.5F * configuration_.sensor_height_m;
+    std::size_t z_min_cutoff_index = 0UL;
+    for (std::size_t i = 0UL; i < sorted_indices_.size(); ++i)
+    {
+        if (cloud_segment[sorted_indices_[i]].z > z_min_lowest_point_representative)
+        {
+            z_min_cutoff_index = i;
+            break;
+        }
+    }
+
+    sorted_indices_.erase(sorted_indices_.begin(), sorted_indices_.begin() + z_min_cutoff_index);
+
+    if (sorted_indices_.empty())
+    {
+        return;
+    }
+
+    float z_mean_lowest_point_representative = 0.0F;
+    const std::size_t number_of_lowest_point_representatives = std::min(
+        sorted_indices_.size(), static_cast<std::size_t>(configuration_.number_of_lower_point_representatives));
+
+    for (std::size_t i = 0UL; i < number_of_lowest_point_representatives; ++i)
+    {
+        z_mean_lowest_point_representative += cloud_segment[sorted_indices_[i]].z;
+    }
+    z_mean_lowest_point_representative /= number_of_lowest_point_representatives;
+
+    const float z_max_lowest_point_representative =
+        z_mean_lowest_point_representative + configuration_.initial_seed_threshold;
+
+    std::size_t z_max_cutoff_index = 0UL;
+    for (std::size_t i = 0UL; i < sorted_indices_.size(); ++i)
+    {
+        if (cloud_segment[sorted_indices_[i]].z > z_max_lowest_point_representative)
+        {
+            z_max_cutoff_index = i;
+            break;
+        }
+    }
+
+    ground_indices.resize(z_max_cutoff_index);
+    for (std::size_t i = 0UL; i < z_max_cutoff_index; ++i)
+    {
+        ground_indices[i] = sorted_indices_[i];
     }
 }
 

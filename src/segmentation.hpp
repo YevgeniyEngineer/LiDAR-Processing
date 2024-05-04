@@ -61,14 +61,16 @@ class Segmenter final
     };
 
     SegmentationConfiguration configuration_;
-
     containers::Vector<std::uint32_t> sorted_indices_;
     containers::Vector<containers::Vector<pcl::PointXYZ>> cloud_segments_;
+    containers::Vector<std::uint32_t> ground_indices_;
+    containers::Vector<std::uint32_t> obstacle_indices_;
 
     template <typename PointT>
     void form_planar_partitions(const pcl::PointCloud<PointT> &cloud_in,
                                 containers::Vector<containers::Vector<Point>> &cloud_segments);
-    void extract_initial_seeds();
+    void extract_initial_seeds(const containers::Vector<Point> &cloud_segment,
+                               containers::Vector<std::uint32_t> &ground_indices);
     void fit_ground_plane();
     void combine_segmented_points();
 };
