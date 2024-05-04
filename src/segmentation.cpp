@@ -103,10 +103,9 @@ void Segmenter::form_planar_partitions(const pcl::PointCloud<PointT> &cloud_in,
     }
 }
 
-void Segmenter::extract_initial_seeds(const containers::Vector<Point> &cloud_segment,
-                                      containers::Vector<std::uint32_t> &ground_indices)
+void Segmenter::extract_initial_seeds(const containers::Vector<Point> &cloud_segment)
 {
-    ground_indices.clear();
+    ground_indices_.clear();
 
     if (cloud_segment.empty())
     {
@@ -165,23 +164,97 @@ void Segmenter::extract_initial_seeds(const containers::Vector<Point> &cloud_seg
         }
     }
 
-    ground_indices.resize(z_max_cutoff_index);
+    ground_indices_.resize(z_max_cutoff_index);
     for (std::size_t i = 0UL; i < z_max_cutoff_index; ++i)
     {
-        ground_indices[i] = sorted_indices_[i];
+        ground_indices_[i] = sorted_indices_[i];
     }
 }
 
-void Segmenter::fit_ground_plane(const containers::Vector<Point> &cloud_segment,
-                                 containers::Vector<std::uint32_t> &ground_indices,
-                                 containers::Vector<std::uint32_t> &obstacle_indices)
+void Segmenter::fit_ground_plane(const containers::Vector<Point> &cloud_segment)
 {
-    ground_indices.clear();
-    obstacle_indices.clear();
+    ground_indices_.clear();
+    obstacle_indices_.clear();
 
-    if (cloud_segment.empty())
+    const std::uint32_t number_of_points = cloud_segment.size();
+    if (number_of_points == 0)
     {
         return;
+    }
+
+    cloud_buffer_.resize(number_of_points * 3);
+    auto cloud_buffer_iterator = cloud_buffer_.begin();
+    for (const auto &point : cloud_segment)
+    {
+        *(cloud_buffer_iterator++) = point.x;
+        *(cloud_buffer_iterator++) = point.y;
+        *(cloud_buffer_iterator++) = point.z;
+    }
+
+    const Eigen::Map<Eigen::MatrixXf> points_xyz{cloud_buffer_.data(), number_of_points, 3};
+
+    extract_initial_seeds(cloud_segment);
+
+    Plane plane_coefficients;
+
+    for (std::uint32_t iteration = 0U; iteration < configuration_.number_of_iterations; ++iteration)
+    {
+        const std::size_t number_of_ground_points = ground_indices_.size();
+
+        if (number_of_ground_points < 3)
+        {
+            // Failed to find ground points - treat everything as obstacles
+            ground_indices_.clear();
+            obstacle_indices_.resize(number_of_points);
+            std::iota(obstacle_indices_.begin(), obstacle_indices_.end(), 0U);
+            return;
+        }
+
+        ground_buffer_.resize(number_of_ground_points * 3);
+        auto ground_buffer_iterator = ground_buffer_.begin();
+        for (std::size_t i = 0UL; i < number_of_ground_points; ++i)
+        {
+            const auto &point = cloud_segment[ground_indices_[i]];
+            *(ground_buffer_iterator++) = point.x;
+            *(ground_buffer_iterator++) = point.y;
+            *(ground_buffer_iterator++) = point.z;
+        }
+        const Eigen::Map<Eigen::MatrixXf> ground_points_xyz(ground_buffer_.data(), number_of_ground_points, 3);
+
+        const bool successful = estimate_plane_coefficients(ground_points_xyz, plane_coefficients);
+
+        if (!successful)
+        {
+            // Failed to find plane coefficients - treat everything as obstacles
+            ground_indices_.clear();
+            obstacle_indices_.resize(number_of_points);
+            std::iota(obstacle_indices_.begin(), obstacle_indices_.end(), 0U);
+            return;
+        }
+
+        const Eigen::Vector3f normal(plane_coefficients.a, plane_coefficients.b, plane_coefficients.c);
+
+        distance_buffer_.resize(number_of_points);
+        Eigen::Map<Eigen::Vector3f> distances(distance_buffer_.data(), number_of_points, 1);
+
+        distances.noalias() = points_xyz - normal;
+        distances.array() -= normal.z();
+
+        const float scaled_orthogonal_distance_threshold = configuration_.orthogonal_distance_threshold * normal.norm();
+        ground_indices_.clear();
+        obstacle_indices_.clear();
+
+        for (std::uint32_t point_index = 0U; point_index < number_of_points; ++point_index)
+        {
+            if (distances(point_index) < scaled_orthogonal_distance_threshold)
+            {
+                ground_indices_.push_back(point_index);
+            }
+            else
+            {
+                obstacle_indices_.push_back(point_index);
+            }
+        }
     }
 }
 

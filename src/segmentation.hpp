@@ -88,13 +88,9 @@ class Segmenter final
     Eigen::JacobiSVD<Eigen::Matrix3f> svd_solver_{Eigen::Matrix3f{}, Eigen::ComputeThinV};
 
     containers::Vector<float> cloud_buffer_;
-    Eigen::Map<Eigen::MatrixXf> cloud_points_xyz_;
-
     containers::Vector<float> ground_buffer_;
-    Eigen::Map<Eigen::MatrixXf> ground_points_xyz_;
-
     containers::Vector<float> centered_points_buffer_;
-    Eigen::Map<Eigen::MatrixXf> centered_points_xyz_;
+    containers::Vector<float> distance_buffer_;
 
     bool estimate_plane_coefficients(const Eigen::Map<Eigen::MatrixXf> &ground_points_xyz, Plane &plane_coefficients);
 
@@ -102,12 +98,9 @@ class Segmenter final
     void form_planar_partitions(const pcl::PointCloud<PointT> &cloud_in,
                                 containers::Vector<containers::Vector<Point>> &cloud_segments);
 
-    void extract_initial_seeds(const containers::Vector<Point> &cloud_segment,
-                               containers::Vector<std::uint32_t> &ground_indices);
+    void extract_initial_seeds(const containers::Vector<Point> &cloud_segment);
 
-    void fit_ground_plane(const containers::Vector<Point> &cloud_segment,
-                          containers::Vector<std::uint32_t> &ground_indices,
-                          containers::Vector<std::uint32_t> &obstacle_indices);
+    void fit_ground_plane(const containers::Vector<Point> &cloud_segment);
 
     void combine_segmented_points();
 };
