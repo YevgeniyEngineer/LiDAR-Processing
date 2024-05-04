@@ -30,6 +30,7 @@ template <typename T> class Queue final
     void push(T &&value);
     template <typename... Args> void emplace(Args &&...args);
     void pop();
+    bool try_pop() noexcept;
     T &front();
     const T &front() const;
 
@@ -120,6 +121,21 @@ template <typename T> void Queue<T>::pop()
     --size_;
 }
 
+template <typename T> bool Queue<T>::try_pop() noexcept
+{
+    if (empty())
+    {
+        return false;
+    }
+
+    buffer_[head_].~T(); // Call destructor for the element
+
+    head_ = incrementWraparound(head_, capacity_);
+    --size_;
+
+    return true;
+}
+
 template <typename T> T &Queue<T>::front()
 {
     if (empty())
@@ -172,7 +188,7 @@ template <typename T> void Queue<T>::clear() noexcept
 {
     while (size() > 0)
     {
-        pop();
+        static_cast<void>(try_pop());
     }
 }
 } // namespace containers

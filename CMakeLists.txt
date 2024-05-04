@@ -5,6 +5,8 @@ cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 
 project(lidar_processing)
 
+set(BUILD_TESTS True)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -80,11 +82,29 @@ target_link_libraries(processing_node
     clustering::adaptive_dbscan
 )
 
-# target_compile_options(processing_node
-# PRIVATE
-# -O2
-# -ftree-vectorize
-# -mtune=generic
-# -march=native
-# -funroll-loops
-# )
+if(BUILD_TESTS)
+    find_package(GTest REQUIRED)
+
+    enable_testing()
+
+    set(TEST_NAME test_kdtree)
+
+    include(GoogleTest)
+
+    add_executable(${TEST_NAME}
+        test/test_kdtree.cpp
+    )
+
+    target_include_directories(${TEST_NAME}
+        PRIVATE
+            include
+            src
+    )
+
+    target_link_libraries(${TEST_NAME}
+        PRIVATE
+            GTest::gtest_main
+    )
+
+    gtest_discover_tests(${TEST_NAME})
+endif()
