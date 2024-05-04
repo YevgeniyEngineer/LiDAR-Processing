@@ -98,7 +98,6 @@ template <typename PointT> void Segmenter::form_planar_partitions(const pcl::Poi
     std::size_t index_low = 0UL;
     std::size_t index_high = number_of_points_within_segment;
 
-    cloud_segments_.reserve(configuration_.number_of_planar_partitions);
     cloud_segments_.clear();
 
     for (std::size_t segment_index = 0UL; segment_index < configuration_.number_of_planar_partitions; ++segment_index)
@@ -106,7 +105,6 @@ template <typename PointT> void Segmenter::form_planar_partitions(const pcl::Poi
         cloud_segments_.resize(cloud_segments_.size() + 1UL);
         auto &cloud_segment = cloud_segments_.back();
 
-        cloud_segment.reserve(index_high - index_low + 1UL);
         cloud_segment.clear();
 
         for (std::size_t index = index_low; index < index_high; ++index)
