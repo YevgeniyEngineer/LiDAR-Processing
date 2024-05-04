@@ -2,6 +2,8 @@
 
 // STL
 #include <algorithm>
+#include <execution>
+#include <iostream>
 #include <numeric>
 
 namespace lidar_processing
@@ -9,15 +11,28 @@ namespace lidar_processing
 void Segmenter::update_configuration(const SegmentationConfiguration &configuration)
 {
     configuration_ = configuration;
+    reserve_memory();
 }
 
-template <typename PointT>
-void Segmenter::segment(const pcl::PointCloud<PointT> &cloud_in, std::vector<SegmentationLabel> &labels,
-                        pcl::PointCloud<PointT> &ground_cloud, pcl::PointCloud<PointT> &obstacle_cloud)
+void Segmenter::reserve_memory(std::uint32_t number_of_points)
 {
+    sorted_indices_.reserve(number_of_points);
+    cloud_segments_.resize(configuration_.number_of_planar_partitions);
+    for (auto &segment : cloud_segments_)
+    {
+        segment.resize(number_of_points / configuration_.number_of_planar_partitions + 1);
+        segment.clear();
+    }
+    cloud_segments_.clear();
+    ground_indices_.reserve(number_of_points);
+    obstacle_indices_.reserve(number_of_points);
+    cloud_buffer_.reserve(number_of_points * 3);
+    ground_buffer_.reserve(number_of_points * 3);
+    centered_points_buffer_.reserve(number_of_points * 3);
+    distance_buffer_.reserve(number_of_points * 3);
 }
 
-bool Segmenter::estimate_plane_coefficients(const Eigen::Map<Eigen::MatrixXf> &ground_points_xyz,
+bool Segmenter::estimate_plane_coefficients(const Eigen::Matrix<float, -1, -1, Eigen::RowMajor> &ground_points_xyz,
                                             Plane &plane_coefficients)
 {
     // https://eigen.tuxfamily.org/dox/group__DenseDecompositionBenchmark.html
@@ -34,7 +49,8 @@ bool Segmenter::estimate_plane_coefficients(const Eigen::Map<Eigen::MatrixXf> &g
     const Eigen::RowVector3f centroid = ground_points_xyz.colwise().mean();
 
     centered_points_buffer_.resize(static_cast<std::size_t>(number_of_points) * 3UL);
-    Eigen::Map<Eigen::MatrixXf> centered_points(centered_points_buffer_.data(), number_of_points, 3);
+    Eigen::Map<Eigen::Matrix<float, -1, -1, Eigen::RowMajor>> centered_points(centered_points_buffer_.data(),
+                                                                              number_of_points, 3);
 
     centered_points.noalias() = ground_points_xyz.rowwise() - centroid;
 
@@ -42,6 +58,11 @@ bool Segmenter::estimate_plane_coefficients(const Eigen::Map<Eigen::MatrixXf> &g
     covariance /= static_cast<float>(number_of_points - 1);
 
     svd_solver_.compute(covariance);
+    if (svd_solver_.info() != Eigen::Success)
+    {
+        std::cerr << "SVD failed to converge. Numerical issue encountered with the provided data." << std::endl;
+        return false;
+    }
 
     const Eigen::Vector3f normal = svd_solver_.matrixV().col(2);
 
@@ -53,11 +74,9 @@ bool Segmenter::estimate_plane_coefficients(const Eigen::Map<Eigen::MatrixXf> &g
     return true;
 }
 
-template <typename PointT>
-void Segmenter::form_planar_partitions(const pcl::PointCloud<PointT> &cloud_in,
-                                       containers::Vector<containers::Vector<Point>> &cloud_segments)
+template <typename PointT> void Segmenter::form_planar_partitions(const pcl::PointCloud<PointT> &cloud_in)
 {
-    cloud_segments.clear();
+    cloud_segments_.clear();
 
     if (cloud_in.empty())
     {
@@ -70,7 +89,7 @@ void Segmenter::form_planar_partitions(const pcl::PointCloud<PointT> &cloud_in,
     std::iota(sorted_indices_.begin(), sorted_indices_.end(), 0U);
 
     const auto &cloud_points = cloud_in.points;
-    std::sort(sorted_indices_.begin(), sorted_indices_.end(),
+    std::sort(std::execution::par, sorted_indices_.begin(), sorted_indices_.end(),
               [&cloud_points](const auto &index_1, const auto &index_2) -> bool {
                   return cloud_points[index_1].x < cloud_points[index_2].x;
               });
@@ -79,13 +98,13 @@ void Segmenter::form_planar_partitions(const pcl::PointCloud<PointT> &cloud_in,
     std::size_t index_low = 0UL;
     std::size_t index_high = number_of_points_within_segment;
 
-    cloud_segments.reserve(configuration_.number_of_planar_partitions);
-    cloud_segments.clear();
+    cloud_segments_.reserve(configuration_.number_of_planar_partitions);
+    cloud_segments_.clear();
 
     for (std::size_t segment_index = 0UL; segment_index < configuration_.number_of_planar_partitions; ++segment_index)
     {
-        cloud_segments.resize(cloud_segments.size() + 1UL);
-        auto &cloud_segment = cloud_segments.back();
+        cloud_segments_.resize(cloud_segments_.size() + 1UL);
+        auto &cloud_segment = cloud_segments_.back();
 
         cloud_segment.reserve(index_high - index_low + 1UL);
         cloud_segment.clear();
@@ -94,6 +113,7 @@ void Segmenter::form_planar_partitions(const pcl::PointCloud<PointT> &cloud_in,
         {
             const auto &point_index = sorted_indices_[index];
             const auto &cloud_point = cloud_points[point_index];
+
             cloud_segment.emplace_back(cloud_point.x, cloud_point.y, cloud_point.z, SegmentationLabel::UNKNOWN,
                                        point_index);
         }
@@ -117,7 +137,7 @@ void Segmenter::extract_initial_seeds(const containers::Vector<Point> &cloud_seg
     sorted_indices_.resize(number_of_points);
     std::iota(sorted_indices_.begin(), sorted_indices_.end(), 0U);
 
-    std::sort(sorted_indices_.begin(), sorted_indices_.end(),
+    std::sort(std::execution::par, sorted_indices_.begin(), sorted_indices_.end(),
               [&cloud_segment](const auto &index_1, const auto &index_2) -> bool {
                   return cloud_segment[index_1].z < cloud_segment[index_2].z;
               });
@@ -177,8 +197,9 @@ void Segmenter::fit_ground_plane(const containers::Vector<Point> &cloud_segment)
     obstacle_indices_.clear();
 
     const std::uint32_t number_of_points = cloud_segment.size();
-    if (number_of_points == 0)
+    if (number_of_points < 3)
     {
+        std::cerr << "Cannot fit plane using less than 3 points" << std::endl;
         return;
     }
 
@@ -191,7 +212,8 @@ void Segmenter::fit_ground_plane(const containers::Vector<Point> &cloud_segment)
         *(cloud_buffer_iterator++) = point.z;
     }
 
-    const Eigen::Map<Eigen::MatrixXf> points_xyz{cloud_buffer_.data(), number_of_points, 3};
+    const Eigen::Map<Eigen::Matrix<float, -1, -1, Eigen::RowMajor>> points_xyz{cloud_buffer_.data(), number_of_points,
+                                                                               3};
 
     extract_initial_seeds(cloud_segment);
 
@@ -204,6 +226,7 @@ void Segmenter::fit_ground_plane(const containers::Vector<Point> &cloud_segment)
         if (number_of_ground_points < 3)
         {
             // Failed to find ground points - treat everything as obstacles
+            std::cerr << "Failed ground segmentation" << std::endl;
             ground_indices_.clear();
             obstacle_indices_.resize(number_of_points);
             std::iota(obstacle_indices_.begin(), obstacle_indices_.end(), 0U);
@@ -219,13 +242,15 @@ void Segmenter::fit_ground_plane(const containers::Vector<Point> &cloud_segment)
             *(ground_buffer_iterator++) = point.y;
             *(ground_buffer_iterator++) = point.z;
         }
-        const Eigen::Map<Eigen::MatrixXf> ground_points_xyz(ground_buffer_.data(), number_of_ground_points, 3);
+        const Eigen::Map<Eigen::Matrix<float, -1, -1, Eigen::RowMajor>> ground_points_xyz(ground_buffer_.data(),
+                                                                                          number_of_ground_points, 3);
 
         const bool successful = estimate_plane_coefficients(ground_points_xyz, plane_coefficients);
 
         if (!successful)
         {
             // Failed to find plane coefficients - treat everything as obstacles
+            std::cerr << "Failed ground segmentation" << std::endl;
             ground_indices_.clear();
             obstacle_indices_.resize(number_of_points);
             std::iota(obstacle_indices_.begin(), obstacle_indices_.end(), 0U);
@@ -235,10 +260,10 @@ void Segmenter::fit_ground_plane(const containers::Vector<Point> &cloud_segment)
         const Eigen::Vector3f normal(plane_coefficients.a, plane_coefficients.b, plane_coefficients.c);
 
         distance_buffer_.resize(number_of_points);
-        Eigen::Map<Eigen::Vector3f> distances(distance_buffer_.data(), number_of_points, 1);
+        Eigen::Map<Eigen::VectorXf> distances(distance_buffer_.data(), number_of_points);
 
-        distances.noalias() = points_xyz - normal;
-        distances.array() -= normal.z();
+        distances.noalias() = points_xyz * normal;
+        distances.array() -= plane_coefficients.d;
 
         const float scaled_orthogonal_distance_threshold = configuration_.orthogonal_distance_threshold * normal.norm();
         ground_indices_.clear();
@@ -246,7 +271,7 @@ void Segmenter::fit_ground_plane(const containers::Vector<Point> &cloud_segment)
 
         for (std::uint32_t point_index = 0U; point_index < number_of_points; ++point_index)
         {
-            if (distances(point_index) < scaled_orthogonal_distance_threshold)
+            if (std::fabs(distances(point_index)) < scaled_orthogonal_distance_threshold)
             {
                 ground_indices_.push_back(point_index);
             }
@@ -254,6 +279,42 @@ void Segmenter::fit_ground_plane(const containers::Vector<Point> &cloud_segment)
             {
                 obstacle_indices_.push_back(point_index);
             }
+        }
+    }
+}
+
+template <typename PointT>
+void Segmenter::segment(const pcl::PointCloud<PointT> &cloud_in, std::vector<SegmentationLabel> &labels,
+                        pcl::PointCloud<PointT> &ground_cloud, pcl::PointCloud<PointT> &obstacle_cloud)
+{
+    labels.resize(cloud_in.size(), SegmentationLabel::UNKNOWN);
+    ground_cloud.clear();
+    obstacle_cloud.clear();
+
+    const std::uint32_t number_of_points = cloud_in.points.size();
+    if (number_of_points == 0)
+    {
+        return;
+    }
+
+    form_planar_partitions(cloud_in);
+
+    for (const auto &cloud_segment : cloud_segments_)
+    {
+        fit_ground_plane(cloud_segment);
+
+        for (const auto &ground_index : ground_indices_)
+        {
+            const auto index = cloud_segment[ground_index].index;
+            labels[index] = SegmentationLabel::GROUND;
+            ground_cloud.push_back(cloud_in[index]);
+        }
+
+        for (const auto &obstacle_index : obstacle_indices_)
+        {
+            const auto index = cloud_segment[obstacle_index].index;
+            labels[index] = SegmentationLabel::OBSTACLE;
+            obstacle_cloud.push_back(cloud_in[index]);
         }
     }
 }
@@ -266,10 +327,8 @@ template void Segmenter::segment(const pcl::PointCloud<pcl::PointXYZI> &cloud_in
                                  std::vector<SegmentationLabel> &labels, pcl::PointCloud<pcl::PointXYZI> &ground_cloud,
                                  pcl::PointCloud<pcl::PointXYZI> &obstacle_cloud);
 
-template void Segmenter::form_planar_partitions(const pcl::PointCloud<pcl::PointXYZ> &cloud_in,
-                                                containers::Vector<containers::Vector<Point>> &cloud_partitions);
+template void Segmenter::form_planar_partitions(const pcl::PointCloud<pcl::PointXYZ> &cloud_in);
 
-template void Segmenter::form_planar_partitions(const pcl::PointCloud<pcl::PointXYZI> &cloud_in,
-                                                containers::Vector<containers::Vector<Point>> &cloud_partitions);
+template void Segmenter::form_planar_partitions(const pcl::PointCloud<pcl::PointXYZI> &cloud_in);
 
 } // namespace lidar_processing

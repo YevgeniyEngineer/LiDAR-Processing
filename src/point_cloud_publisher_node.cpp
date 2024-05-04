@@ -40,11 +40,10 @@ class PointCloudPublisherNode : public rclcpp::Node
     constexpr static double SECONDS_TO_NANOSECONDS = 1.0e9;
 
   public:
-    PointCloudPublisherNode(const std::filesystem::path& data_path,
-                            const std::string& topic = "pointcloud",
+    PointCloudPublisherNode(const std::filesystem::path &data_path, const std::string &topic = "pointcloud",
                             bool print_debug_info = false)
-        : rclcpp::Node::Node("data_reader_node"), publisher_(nullptr),
-          timer_(nullptr), print_debug_info_(print_debug_info)
+        : rclcpp::Node::Node("data_reader_node"), publisher_(nullptr), timer_(nullptr),
+          print_debug_info_(print_debug_info)
     {
         if (!std::filesystem::exists(data_path))
         {
@@ -77,16 +76,12 @@ class PointCloudPublisherNode : public rclcpp::Node
 
         // Create event timer that will trigger readAndPublishDataSample every
         // 100ms
-        timer_ = this->create_wall_timer(
-            100ms, std::bind(&PointCloudPublisherNode::readAndPublishDataSample,
-                             this));
+        timer_ = this->create_wall_timer(100ms, std::bind(&PointCloudPublisherNode::readAndPublishDataSample, this));
 
         // Read files
-        for (const auto& file_path :
-             std::filesystem::directory_iterator(data_path))
+        for (const auto &file_path : std::filesystem::directory_iterator(data_path))
         {
-            if (std::filesystem::is_regular_file(file_path) &&
-                file_path.path().extension() == ".pcd")
+            if (std::filesystem::is_regular_file(file_path) && file_path.path().extension() == ".pcd")
             {
                 file_paths_.emplace_back(file_path.path());
             }
@@ -110,33 +105,30 @@ class PointCloudPublisherNode : public rclcpp::Node
         }
 
         // Read point cloud
-        const auto& file_path = (*file_paths_iterator_).string();
+        const auto &file_path = (*file_paths_iterator_).string();
         pcl::PointCloud<pcl::PointXYZI> point_cloud;
         if (pcl::io::loadPCDFile<pcl::PointXYZI>(file_path, point_cloud) == -1)
         {
             throw std::runtime_error("Could not read .pcd file!");
         }
 
-        // Shift points to the sensor height
-        for (auto& point : point_cloud.points)
-        {
-            point.z += SENSOR_HEIGHT;
-        }
+        // // Shift points to the sensor height
+        // for (auto &point : point_cloud.points)
+        // {
+        //     point.z += SENSOR_HEIGHT;
+        // }
 
         // Convert PointCloud to PointCloud2
         PointCloud2 output_message;
         output_message.header.frame_id = "pointcloud";
 
         // Get seconds + nanoseconds to populate metadata
-        const auto nanosec_timestamp =
-            std::chrono::steady_clock::now().time_since_epoch().count();
-        output_message.header.stamp.sec = static_cast<std::int32_t>(
-            static_cast<double>(nanosec_timestamp / SECONDS_TO_NANOSECONDS));
+        const auto nanosec_timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
+        output_message.header.stamp.sec =
+            static_cast<std::int32_t>(static_cast<double>(nanosec_timestamp / SECONDS_TO_NANOSECONDS));
         output_message.header.stamp.nanosec = static_cast<std::uint32_t>(
             nanosec_timestamp -
-            static_cast<std::int64_t>(
-                static_cast<double>(output_message.header.stamp.sec) *
-                SECONDS_TO_NANOSECONDS));
+            static_cast<std::int64_t>(static_cast<double>(output_message.header.stamp.sec) * SECONDS_TO_NANOSECONDS));
 
         output_message.height = point_cloud.height;
         output_message.width = point_cloud.width;
@@ -146,16 +138,13 @@ class PointCloudPublisherNode : public rclcpp::Node
         output_message.is_dense = point_cloud.is_dense;
 
         // Populate fields
-        std::vector<
-            std::tuple<std::string, std::uint32_t, std::uint8_t, std::uint32_t>>
-            fields = {
-                {"x", offsetof(pcl::PointXYZI, x), PointFieldTypes::FLOAT32, 1},
-                {"y", offsetof(pcl::PointXYZI, y), PointFieldTypes::FLOAT32, 1},
-                {"z", offsetof(pcl::PointXYZI, z), PointFieldTypes::FLOAT32, 1},
-                {"intensity", offsetof(pcl::PointXYZI, intensity),
-                 PointFieldTypes::FLOAT32, 1}};
+        std::vector<std::tuple<std::string, std::uint32_t, std::uint8_t, std::uint32_t>> fields = {
+            {"x", offsetof(pcl::PointXYZI, x), PointFieldTypes::FLOAT32, 1},
+            {"y", offsetof(pcl::PointXYZI, y), PointFieldTypes::FLOAT32, 1},
+            {"z", offsetof(pcl::PointXYZI, z), PointFieldTypes::FLOAT32, 1},
+            {"intensity", offsetof(pcl::PointXYZI, intensity), PointFieldTypes::FLOAT32, 1}};
 
-        for (const auto& field : fields)
+        for (const auto &field : fields)
         {
             sensor_msgs::msg::PointField field_cache;
             field_cache.name = std::get<0>(field);
@@ -167,8 +156,7 @@ class PointCloudPublisherNode : public rclcpp::Node
 
         // Copy byte data
         output_message.data.resize(sizeof(pcl::PointXYZI) * point_cloud.size());
-        std::memcpy(output_message.data.data(), point_cloud.data(),
-                    sizeof(pcl::PointXYZI) * point_cloud.size());
+        std::memcpy(output_message.data.data(), point_cloud.data(), sizeof(pcl::PointXYZI) * point_cloud.size());
 
         // Publish PCLPointCloud2
         publisher_->publish(output_message);
@@ -192,25 +180,19 @@ class PointCloudPublisherNode : public rclcpp::Node
 };
 } // namespace lidar_processing
 
-std::int32_t main(std::int32_t argc, const char** const argv)
+std::int32_t main(std::int32_t argc, const char **const argv)
 {
     rclcpp::init(argc, argv);
     rclcpp::install_signal_handlers();
 
-    const auto data_path = std::filesystem::path(__FILE__)
-                               .parent_path()
-                               .parent_path()
-                               .parent_path()
-                               .append("data");
+    const auto data_path = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path().append("data");
 
     bool success = true;
     try
     {
-        rclcpp::spin(
-            std::make_shared<lidar_processing::PointCloudPublisherNode>(
-                data_path));
+        rclcpp::spin(std::make_shared<lidar_processing::PointCloudPublisherNode>(data_path));
     }
-    catch (const std::exception& ex)
+    catch (const std::exception &ex)
     {
         std::cerr << "Exception: " << ex.what() << std::endl;
         success = false;

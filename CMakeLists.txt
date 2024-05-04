@@ -59,6 +59,7 @@ target_include_directories(processing_node
     PRIVATE
     ${rclcpp_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 ament_target_dependencies(processing_node
     rclcpp

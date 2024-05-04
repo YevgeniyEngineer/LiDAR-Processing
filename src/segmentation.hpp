@@ -41,7 +41,7 @@ class Segmenter final
 
     void update_configuration(const SegmentationConfiguration &configuration);
 
-    void reserve_memory(std::uint32_t number_of_points);
+    void reserve_memory(std::uint32_t number_of_points = 200'000U);
 
     template <typename PointT>
     void segment(const pcl::PointCloud<PointT> &cloud_in, std::vector<SegmentationLabel> &labels,
@@ -81,7 +81,7 @@ class Segmenter final
 
     SegmentationConfiguration configuration_;
     containers::Vector<std::uint32_t> sorted_indices_;
-    containers::Vector<containers::Vector<pcl::PointXYZ>> cloud_segments_;
+    containers::Vector<containers::Vector<Point>> cloud_segments_;
     containers::Vector<std::uint32_t> ground_indices_;
     containers::Vector<std::uint32_t> obstacle_indices_;
 
@@ -92,17 +92,14 @@ class Segmenter final
     containers::Vector<float> centered_points_buffer_;
     containers::Vector<float> distance_buffer_;
 
-    bool estimate_plane_coefficients(const Eigen::Map<Eigen::MatrixXf> &ground_points_xyz, Plane &plane_coefficients);
+    bool estimate_plane_coefficients(const Eigen::Matrix<float, -1, -1, Eigen::RowMajor> &ground_points_xyz,
+                                     Plane &plane_coefficients);
 
-    template <typename PointT>
-    void form_planar_partitions(const pcl::PointCloud<PointT> &cloud_in,
-                                containers::Vector<containers::Vector<Point>> &cloud_segments);
+    template <typename PointT> void form_planar_partitions(const pcl::PointCloud<PointT> &cloud_in);
 
     void extract_initial_seeds(const containers::Vector<Point> &cloud_segment);
 
     void fit_ground_plane(const containers::Vector<Point> &cloud_segment);
-
-    void combine_segmented_points();
 };
 
 extern template void Segmenter::segment(const pcl::PointCloud<pcl::PointXYZ> &cloud_in,
@@ -115,11 +112,9 @@ extern template void Segmenter::segment(const pcl::PointCloud<pcl::PointXYZI> &c
                                         pcl::PointCloud<pcl::PointXYZI> &ground_cloud,
                                         pcl::PointCloud<pcl::PointXYZI> &obstacle_cloud);
 
-extern template void Segmenter::form_planar_partitions(const pcl::PointCloud<pcl::PointXYZ> &cloud_in,
-                                                       containers::Vector<containers::Vector<Point>> &cloud_partitions);
+extern template void Segmenter::form_planar_partitions(const pcl::PointCloud<pcl::PointXYZ> &cloud_in);
 
-extern template void Segmenter::form_planar_partitions(const pcl::PointCloud<pcl::PointXYZI> &cloud_in,
-                                                       containers::Vector<containers::Vector<Point>> &cloud_partitions);
+extern template void Segmenter::form_planar_partitions(const pcl::PointCloud<pcl::PointXYZI> &cloud_in);
 
 } // namespace lidar_processing
 
