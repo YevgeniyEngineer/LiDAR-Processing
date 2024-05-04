@@ -19,8 +19,9 @@ using ClusteringLabel = std::int32_t;
 
 struct ClusteringConfiguration final
 {
-    float dist_sqr{0.16F};
-    std::uint32_t min_cluster_size{3U};
+    float distance_squared{0.18F};
+    float cluster_quality{0.5F};
+    std::uint32_t min_cluster_size{4U};
     std::uint32_t max_cluster_size{std::numeric_limits<std::uint32_t>::max()};
 };
 
@@ -47,7 +48,7 @@ class Clusterer final
     containers::Vector<Point<float, 3>> points_;
     containers::Vector<decltype(kdtree_)::RetT> neigh_;
     containers::Vector<std::uint32_t> indices_;
-    std::vector<bool> is_seed_set_;
+    std::vector<bool> removed_;
     containers::Queue<std::uint32_t> queue_;
 };
 

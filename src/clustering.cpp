@@ -1,7 +1,5 @@
 #include "clustering.hpp"
 
-#include <chrono>
-
 namespace lidar_processing
 {
 Clusterer::Clusterer() : configuration_{}
@@ -20,7 +18,7 @@ void Clusterer::reserve_memory(std::uint32_t number_of_points)
     points_.reserve(number_of_points);
     neigh_.reserve(number_of_points);
     indices_.reserve(number_of_points);
-    is_seed_set_.reserve(number_of_points);
+    removed_.reserve(number_of_points);
     queue_.reserve(number_of_points);
 }
 
@@ -28,7 +26,6 @@ template <typename PointT>
 void Clusterer::cluster(const pcl::PointCloud<PointT> &cloud_in, std::vector<ClusteringLabel> &labels)
 {
     labels.assign(cloud_in.size(), UNDEFINED);
-
     if (cloud_in.empty())
     {
         return;
@@ -42,64 +39,65 @@ void Clusterer::cluster(const pcl::PointCloud<PointT> &cloud_in, std::vector<Clu
     }
 
     kdtree_.rebuild(points_);
+    removed_.assign(cloud_in.size(), false);
+
+    const auto distance_squared_threshold =
+        std::pow(1.0 - configuration_.cluster_quality, 2) * configuration_.distance_squared;
 
     ClusteringLabel label = 0U;
-
-    is_seed_set_.resize(cloud_in.size());
-
     for (std::uint32_t i = 0U; i < cloud_in.size(); ++i)
     {
-        if (labels[i] == UNDEFINED)
+        if (removed_[i])
         {
-            queue_.push(i);
-            indices_.clear();
+            continue;
+        }
 
-            std::fill(is_seed_set_.begin(), is_seed_set_.end(), false);
-            is_seed_set_[i] = true;
+        queue_.push(i);
+        indices_.clear();
 
-            while (queue_.size() > 0U)
+        while (queue_.size() > 0U)
+        {
+            const auto j = queue_.front();
+            queue_.pop();
+
+            if (removed_[j])
             {
-                const auto j = queue_.front();
-                queue_.pop();
+                continue;
+            }
 
-                if (labels[j] == UNDEFINED)
+            kdtree_.radius_search(points_[j], configuration_.distance_squared, neigh_);
+
+            for (const auto &[k, dist] : neigh_)
+            {
+                if (removed_[k])
                 {
-                    labels[j] = label;
-                    is_seed_set_[j] = true;
+                    continue;
+                }
 
-                    indices_.push_back(j);
+                labels[k] = label;
+                indices_.push_back(k);
 
-                    kdtree_.radius_search(points_[j], configuration_.dist_sqr, neigh_);
-
-                    for (const auto &[k, dist] : neigh_)
-                    {
-                        if (is_seed_set_[k])
-                        {
-                            continue;
-                        }
-
-                        is_seed_set_[k] = true;
-
-                        if (labels[k] == UNDEFINED)
-                        {
-                            queue_.push(k);
-                        }
-                    }
+                if (dist <= distance_squared_threshold)
+                {
+                    removed_[k] = true;
+                }
+                else
+                {
+                    queue_.push(k);
                 }
             }
+        }
 
-            if ((indices_.size() < configuration_.min_cluster_size) ||
-                (indices_.size() > configuration_.max_cluster_size))
+        if ((indices_.size() < configuration_.min_cluster_size) || (indices_.size() > configuration_.max_cluster_size))
+        {
+            for (const auto &index : indices_)
             {
-                for (const auto &index : indices_)
-                {
-                    labels[index] = INVALID;
-                }
+                labels[index] = INVALID;
             }
-            else
-            {
-                ++label;
-            }
+        }
+        else
+        {
+            ++label;
         }
     }
 }

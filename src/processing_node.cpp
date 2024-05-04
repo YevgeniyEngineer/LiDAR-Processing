@@ -5,12 +5,8 @@
 // #include "channel_based_ground_segmenter.hpp"
 #include "clustering.hpp"
 #include "conversions.hpp"
-#include "ground_segmentation.hpp"
 #include "internal_types.hpp"
-#include "line_fit_ransac_ground_segmenter.hpp"
-#include "obstacle_clustering.hpp"
 #include "polygon_simplification.hpp"
-#include "ransac_ground_segmentation.hpp"
 #include "segmentation.hpp"
 
 // STL
@@ -36,9 +32,6 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-
-// StackVector
-#include "utilities/stack_vector.hpp"
 
 namespace lidar_processing
 {
@@ -72,6 +65,12 @@ class ProcessingNode : public rclcpp::Node
         // the remote node as "dead" or "unresponsive"
         qos.deadline(std::chrono::seconds(1));
 
+        // Preallocate memory
+        cloud_in_.reserve(200'000);
+        ground_points_.reserve(200'000);
+        obstacle_points_.reserve(200'000);
+
+        // Create publishers and subscribers
         subscriber_ = this->create_subscription<PointCloud2>(
             "pointcloud", qos, std::bind(&ProcessingNode::process, this, std::placeholders::_1));
 
@@ -103,143 +102,74 @@ class ProcessingNode : public rclcpp::Node
     rclcpp::Publisher<MarkerArray>::SharedPtr publisher_obstacle_convex_hulls_;
     rclcpp::Publisher<MarkerArray>::SharedPtr publisher_obstacle_concave_hulls_;
 
-    // Ground segmentation
-    // ChannelBasedGroundSegmenter channel_based_ground_segmenter_;
-    LineFitRANSACGroundSegmenter line_fit_ransac_ground_segmenter_;
+    // Cache
+    pcl::PointCloud<pcl::PointXYZI> cloud_in_;
+    pcl::PointCloud<pcl::PointXYZI> ground_points_;
+    pcl::PointCloud<pcl::PointXYZI> obstacle_points_;
+    std::vector<SegmentationLabel> segmentation_labels_;
 
     // Segmenter
     Segmenter segmenter_;
 
     // Clusterer
     Clusterer clusterer_;
-
-    // Clusterer
-    static constexpr float NEIGHBOUR_RADIUS_THRESHOLD = 0.3;
-    static constexpr float CLUSTER_QUALITY = 0.5;
-    static constexpr std::uint32_t MIN_CLUSTER_SIZE = 4;
-    static constexpr std::uint32_t MAX_CLUSTER_SIZE = std::numeric_limits<std::uint32_t>::max();
-
-    ObstacleClusterer obstacle_clusterer_{NEIGHBOUR_RADIUS_THRESHOLD, CLUSTER_QUALITY, MIN_CLUSTER_SIZE,
-                                          MAX_CLUSTER_SIZE};
 };
 
 void ProcessingNode::process(const PointCloud2 &input_message)
 {
-    // Segmentation parameters
-    SegmentationAlgorithm segmentation_algorithm = SegmentationAlgorithm::ITERATIVE_PLANE_FITTING;
-
-    // Clustering parameters
-    ClusteringAlgorithm clustering_algorithm = ClusteringAlgorithm::DBSCAN;
-
-    static constexpr float neighbour_radius_threshold = 0.3;
-    static constexpr float cluster_quality = 0.5;
-    static constexpr std::uint32_t min_cluster_size = 4;
-    static constexpr std::uint32_t max_cluster_size = std::numeric_limits<std::uint32_t>::max();
-
-    // Instantiate processing objects
-    auto ground_segmenter = std::make_unique<GroundSegmenter>();
-
-    // auto obstacle_clusterer = std::make_unique<ObstacleClusterer>(
-    //     neighbour_radius_threshold, cluster_quality, min_cluster_size, max_cluster_size, clustering_algorithm);
-
-    // Convert PointCloud2 to pcl::PointCloud<pcl::PointXYZI>
-    auto point_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
-    convertPointCloud2ToPCL(input_message, *point_cloud);
+    convertPointCloud2ToPCL(input_message, cloud_in_);
 
     // auto downsampled_point_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZI>>();
     // downsampled_point_cloud->points.reserve(point_cloud->points.size());
 
     // pcl::VoxelGrid<pcl::PointXYZI> voxel_grid_downsampler;
-    // voxel_grid_downsampler.setInputCloud(point_cloud);
+    // voxel_grid_downsampler.setInputCloud(cloud_in_);
     // voxel_grid_downsampler.setLeafSize(0.06f, 0.06f, 0.06f);
     // voxel_grid_downsampler.filter(*downsampled_point_cloud);
 
     // Ground segmentation
     const auto ground_segmentation_start_time = std::chrono::high_resolution_clock::now();
 
+    segmenter_.segment(cloud_in_, segmentation_labels_, ground_points_, obstacle_points_);
+
     auto ground_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
-    auto obstacle_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
-
-    auto ground_cloud_2 = std::make_unique<pcl::PointCloud<pcl::PointXYZ>>();
-    auto obstacle_cloud_2 = std::make_unique<pcl::PointCloud<pcl::PointXYZ>>();
-
-    // ground_segmenter->segmentGround(*downsampled_point_cloud, *ground_cloud, *obstacle_cloud);
-
-    std::vector<SegmentationLabel> labels;
-    pcl::PointCloud<pcl::PointXYZI> ground_points;
-    pcl::PointCloud<pcl::PointXYZI> obstacle_points;
-
-    segmenter_.segment(*point_cloud, labels, ground_points, obstacle_points);
-
-    ground_cloud->clear();
-    obstacle_cloud->clear();
-
-    for (const auto &ground_point : ground_points)
+    ground_cloud->reserve(ground_points_.size());
+    for (const auto &ground_point : ground_points_)
     {
         ground_cloud->emplace_back(ground_point.x, ground_point.y, ground_point.z, 220, 220, 220, 0);
     }
-    for (const auto &obstacle_point : obstacle_points)
+    auto obstacle_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZRGBL>>();
+    obstacle_cloud->reserve(obstacle_points_.size());
+    for (const auto &obstacle_point : obstacle_points_)
     {
         obstacle_cloud->emplace_back(obstacle_point.x, obstacle_point.y, obstacle_point.z, 0, 255, 0, 1);
     }
 
-    // // RANSAC
-    // if (segmentation_algorithm == SegmentationAlgorithm::RANSAC)
-    // {
-    //     segmentGroundRANSAC(*downsampled_point_cloud, *ground_cloud, *obstacle_cloud);
-    // }
-    // // Fast Segmentation
-    // else if (segmentation_algorithm == SegmentationAlgorithm::ITERATIVE_PLANE_FITTING)
-    // {
-    //     ground_segmenter->segmentGround(*downsampled_point_cloud, *ground_cloud, *obstacle_cloud);
-    // }
-    // else if (segmentation_algorithm == SegmentationAlgorithm::RULE_BASED_APPROACH)
-    // {
-    //     channel_based_ground_segmenter_.setInputCloud(downsampled_point_cloud->points);
-    //     channel_based_ground_segmenter_.segment(*ground_cloud_2, *obstacle_cloud_2);
-    // }
-    // else if (segmentation_algorithm == SegmentationAlgorithm::LINE_FIT_RANSAC)
-    // {
-    //     line_fit_ransac_ground_segmenter_.setInputCloud(downsampled_point_cloud->points);
-    // }
-    // else
-    // {
-    //     throw std::runtime_error("Unknown segmentation algorithm");
-    // }
+    const auto ground_segmentation_end_time = std::chrono::high_resolution_clock::now();
 
-    const auto &ground_segmentation_end_time = std::chrono::high_resolution_clock::now();
-    std::cout << "Ground segmentation time: "
-              << (ground_segmentation_end_time - ground_segmentation_start_time).count() / 1e9 << std::endl;
+    RCLCPP_INFO(this->get_logger(), "Ground segmentation time [ms]: %lf",
+                (ground_segmentation_end_time - ground_segmentation_start_time).count() / 1.0e6);
 
-    std::cout << "Ground Pts: " << ground_cloud->size() << " | Obstacle Pts: " << obstacle_cloud->size() << std::endl;
+    RCLCPP_INFO(this->get_logger(), "Ground Pts: %lu | Obstacle Pts: %lu", ground_cloud->size(),
+                obstacle_points_.size());
 
     // Obstacle clustering
-    const auto &obstacle_clustering_start_time = std::chrono::high_resolution_clock::now();
+    const auto obstacle_clustering_start_time = std::chrono::high_resolution_clock::now();
 
     std::vector<pcl::PointCloud<pcl::PointXYZ>> clustered_obstacle_cloud;
-    // // obstacle_clusterer->clusterObstacles(*obstacle_cloud, clustered_obstacle_cloud);
-    // obstacle_clusterer_.clusterObstacles(*obstacle_cloud, clustered_obstacle_cloud);
-
     std::vector<ClusteringLabel> cluster_labels;
     clusterer_.cluster(*obstacle_cloud, cluster_labels);
 
-    // for (const auto &label : cluster_labels)
-    // {
-    //     if (label != Clusterer::INVALID && label != Clusterer::UNDEFINED)
-    //     {
-    //         std::cerr << label << " ";
-    //     }
-    // }
-    // std::cerr << std::endl;
-
-    // Get the highest label to know how many clusters there are
     const auto max_label = *std::max_element(cluster_labels.cbegin(), cluster_labels.cend());
     clustered_obstacle_cloud.resize(max_label + 1);
 
-    // Assign points to the appropriate cluster cloud
     for (std::size_t i = 0; i < obstacle_cloud->size(); ++i)
     {
         auto label = cluster_labels[i];
+        if (label == Clusterer::UNDEFINED)
+        {
+            throw std::runtime_error("Undefined label found (clustering)");
+        }
         if (label != Clusterer::INVALID)
         {
             const auto &point = obstacle_cloud->points[i];
@@ -247,29 +177,29 @@ void ProcessingNode::process(const PointCloud2 &input_message)
         }
     }
 
-    // Optionally, remove any empty clouds if some labels were not used
     clustered_obstacle_cloud.erase(
         std::remove_if(clustered_obstacle_cloud.begin(), clustered_obstacle_cloud.end(),
                        [](const pcl::PointCloud<pcl::PointXYZ> &cloud) -> bool { return cloud.empty(); }),
         clustered_obstacle_cloud.end());
 
-    const auto &obstacle_clustering_end_time = std::chrono::high_resolution_clock::now();
-    std::cout << "Obstacle clustering time: "
-              << (obstacle_clustering_end_time - obstacle_clustering_start_time).count() / 1e9 << std::endl;
+    const auto obstacle_clustering_end_time = std::chrono::high_resolution_clock::now();
 
-    std::cout << "Number of clusters: " << clustered_obstacle_cloud.size() << std::endl;
+    RCLCPP_INFO(this->get_logger(), "Obstacle clustering time [ms]: %lf",
+                (obstacle_clustering_end_time - obstacle_clustering_start_time).count() / 1.0e6);
+
+    RCLCPP_INFO(this->get_logger(), "Number of clusters: %lu", clustered_obstacle_cloud.size());
 
     // Polygonization
-    const auto &convex_polygon_simplification_start_time = std::chrono::high_resolution_clock::now();
+    const auto polygonization_start_time = std::chrono::high_resolution_clock::now();
 
     std::vector<std::vector<geom::Point<float>>> cluster_outlines;
     // findOrderedConvexOutlines(clustered_obstacle_cloud, cluster_outlines);
     findOrderedConcaveOutlines(clustered_obstacle_cloud, cluster_outlines);
 
-    const auto &convex_polygon_simplification_end_time = std::chrono::high_resolution_clock::now();
-    std::cout << "Convex polygon simplification time: "
-              << (convex_polygon_simplification_end_time - convex_polygon_simplification_start_time).count() / 1e9
-              << std::endl;
+    const auto polygonization_end_time = std::chrono::high_resolution_clock::now();
+
+    RCLCPP_INFO(this->get_logger(), "Polygonization time [ms]: %lf",
+                (polygonization_end_time - polygonization_start_time).count() / 1.0e6);
 
     // ***** Publish data for visualisation *****
     // Convert to ROS2 format and publish (ground segmentation)
@@ -279,14 +209,6 @@ void ProcessingNode::process(const PointCloud2 &input_message)
         output_ground_segmentation_message->header = input_message.header;
         output_ground_segmentation_message->is_bigendian = input_message.is_bigendian;
         convertPCLToPointCloud2(*ground_cloud, *output_ground_segmentation_message);
-        publisher_ground_cloud_->publish(*output_ground_segmentation_message);
-    }
-    else if (!ground_cloud_2->empty())
-    {
-        auto output_ground_segmentation_message = std::make_unique<PointCloud2>();
-        output_ground_segmentation_message->header = input_message.header;
-        output_ground_segmentation_message->is_bigendian = input_message.is_bigendian;
-        convertPCLToPointCloud2(*ground_cloud_2, *output_ground_segmentation_message, 0, 255, 0);
         publisher_ground_cloud_->publish(*output_ground_segmentation_message);
     }
     else
@@ -302,14 +224,6 @@ void ProcessingNode::process(const PointCloud2 &input_message)
         convertPCLToPointCloud2(*obstacle_cloud, *output_obstacle_segmentation_message);
         publisher_obstacle_cloud_->publish(*output_obstacle_segmentation_message);
     }
-    else if (!obstacle_cloud_2->empty())
-    {
-        auto output_obstacle_segmentation_message = std::make_unique<PointCloud2>();
-        output_obstacle_segmentation_message->header = input_message.header;
-        output_obstacle_segmentation_message->is_bigendian = input_message.is_bigendian;
-        convertPCLToPointCloud2(*obstacle_cloud_2, *output_obstacle_segmentation_message, 255, 0, 0);
-        publisher_obstacle_cloud_->publish(*output_obstacle_segmentation_message);
-    }
     else
     {
         std::cout << "No obstacle points!" << std::endl;
@@ -321,14 +235,8 @@ void ProcessingNode::process(const PointCloud2 &input_message)
         auto output_clustered_obstacle_message = std::make_unique<PointCloud2>();
         output_clustered_obstacle_message->header = input_message.header;
         output_clustered_obstacle_message->is_bigendian = input_message.is_bigendian;
-
-        // Convert to colorized point cloud
         auto colorized_cloud = convertClusteredCloudToColorizedCloud(clustered_obstacle_cloud);
-
-        // Convert colorized cloud to PointCloud2
         convertPCLToPointCloud2(colorized_cloud, *output_clustered_obstacle_message);
-
-        // Publish colorized clustered cloud
         publisher_obstacle_clustering_cloud_->publish(*output_clustered_obstacle_message);
     }
 
