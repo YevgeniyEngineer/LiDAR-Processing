@@ -5,7 +5,6 @@
 // #include "channel_based_ground_segmenter.hpp"
 #include "clustering.hpp"
 #include "conversions.hpp"
-#include "internal_types.hpp"
 #include "polygon_simplification.hpp"
 #include "segmentation.hpp"
 
@@ -16,7 +15,6 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include <tuple>
 #include <vector>
 
 // ROS2

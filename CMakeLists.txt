@@ -21,11 +21,8 @@ find_package(geometry_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 
-add_subdirectory(./DBSCAN)
-add_subdirectory(./Fast-Euclidean-Clustering)
 add_subdirectory(./Convex-Hull)
 add_subdirectory(./Concave-Hull)
-add_subdirectory(./Adaptive-DBSCAN)
 
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
@@ -48,13 +45,9 @@ target_link_libraries(point_cloud_publisher_node
 add_executable(processing_node
     src/segmentation.cpp
     src/clustering.cpp
-    ###
     src/processing_node.cpp
-    src/ground_segmentation.cpp
-    src/obstacle_clustering.cpp
     src/conversions.cpp
     src/polygon_simplification.cpp
-    src/adaptive_euclidean_clustering.cpp
 )
 target_include_directories(processing_node
     PUBLIC
@@ -77,11 +70,8 @@ target_link_libraries(processing_node
     Eigen3::Eigen
     ${PCL_LIBRARIES}
     ${rclcpp_LIBRARIES}
-    dbscan::dbscan
-    fast_euclidean_clustering::fast_euclidean_clustering
     convex_hull::convex_hull
     concave_hull::concave_hull
-    clustering::adaptive_dbscan
 )
 
 if(BUILD_TESTS)

@@ -1,9 +1,6 @@
 #ifndef CONVERSIONS
 #define CONVERSIONS
 
-// Point<T>
-#include "internal_types.hpp"
-
 // STL
 #include <cstdint>
 #include <cstdlib> // for std::rand()

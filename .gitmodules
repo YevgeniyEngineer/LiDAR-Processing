@@ -1,18 +1,6 @@
-[submodule "Fast-Euclidean-Clustering"]
-	path = Fast-Euclidean-Clustering
-	url = https://github.com/YevgeniyEngineer/Fast-Euclidean-Clustering.git
 [submodule "Convex-Hull"]
 	path = Convex-Hull
 	url = https://github.com/YevgeniyEngineer/Convex-Hull.git
-[submodule "DBSCAN"]
-	path = DBSCAN
-	url = https://github.com/YevgeniyEngineer/DBSCAN.git
-[submodule "KDTree"]
-	path = KDTree
-	url = https://github.com/YevgeniyEngineer/KDTree.git
 [submodule "Concave-Hull"]
 	path = Concave-Hull
 	url = https://github.com/YevgeniyEngineer/Concave-Hull.git
-[submodule "Adaptive-DBSCAN"]
-	path = Adaptive-DBSCAN
-	url = https://github.com/YevgeniyEngineer/Adaptive-DBSCAN.git
