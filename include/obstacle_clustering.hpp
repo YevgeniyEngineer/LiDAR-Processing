@@ -15,8 +15,11 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
-// For the adaptive clustering
+// Clustering
+#include "adaptive_dbscan_clustering.hpp"
 #include "adaptive_euclidean_clustering.hpp"
+#include "dbscan_clustering.hpp"
+#include "fec_clustering.hpp"
 
 #define DEBUG_CLUSTERING 0
 
@@ -49,6 +52,8 @@ class ObstacleClusterer
     std::uint32_t min_cluster_size_;
     std::uint32_t max_cluster_size_;
     ClusteringAlgorithm clustering_algorithm_;
+
+    std::unique_ptr<clustering::DBSCANClustering<float, 3>> dbscan_clusterer_;
 };
 
 } // namespace lidar_processing

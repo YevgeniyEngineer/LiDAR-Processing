@@ -76,11 +76,12 @@ target_link_libraries(processing_node
     concave_hull::concave_hull
     clustering::adaptive_dbscan
 )
-target_compile_options(processing_node
-    PRIVATE
-    -O2
-    -ftree-vectorize
-    -mtune=generic
-    -march=native
-    -funroll-loops
-)
+
+# target_compile_options(processing_node
+# PRIVATE
+# -O2
+# -ftree-vectorize
+# -mtune=generic
+# -march=native
+# -funroll-loops
+# )

@@ -1,13 +1,5 @@
 #include "obstacle_clustering.hpp"
 
-#include "dbscan_clustering.hpp"
-#include "fec_clustering.hpp"
-
-#include "adaptive_dbscan_clustering.hpp"
-#include "adaptive_euclidean_clustering.hpp"
-#include <algorithm>
-#include <cstdint>
-
 namespace lidar_processing
 {
 ObstacleClusterer::ObstacleClusterer(float neighbour_radius_threshold, float cluster_quality,
@@ -15,7 +7,9 @@ ObstacleClusterer::ObstacleClusterer(float neighbour_radius_threshold, float clu
                                      ClusteringAlgorithm clustering_algorithm)
     : neighbour_radius_threshold_(neighbour_radius_threshold), cluster_quality_(cluster_quality),
       min_cluster_size_(min_cluster_size), max_cluster_size_(max_cluster_size),
-      clustering_algorithm_(clustering_algorithm)
+      clustering_algorithm_(clustering_algorithm),
+      dbscan_clusterer_(std::make_unique<clustering::DBSCANClustering<float, 3>>(neighbour_radius_threshold_,
+                                                                                 min_cluster_size_, max_cluster_size_))
 {
 }
 
@@ -48,12 +42,13 @@ void ObstacleClusterer::clusterObstacles(const pcl::PointCloud<pcl::PointXYZRGBL
             point_cloud->points.push_back(DBSCANPoint{point.x, point.y, point.z});
         }
 
-        auto dbscan = std::make_unique<DBSCANClustering>(*point_cloud, neighbour_radius_threshold_, min_cluster_size_,
-                                                         max_cluster_size_);
+        dbscan_clusterer_->reserve(point_cloud->points.size() * 2);
 
-        dbscan->formClusters();
+        dbscan_clusterer_->rebuildKDTree(*point_cloud);
 
-        const auto clusters = dbscan->getClusterIndices();
+        dbscan_clusterer_->formClusters();
+
+        const auto clusters = dbscan_clusterer_->getClusterIndices();
 
         if (!clusters.empty())
         {

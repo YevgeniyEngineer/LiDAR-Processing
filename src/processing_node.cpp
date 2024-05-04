@@ -104,6 +104,15 @@ class ProcessingNode : public rclcpp::Node
     // Ground segmentation
     ChannelBasedGroundSegmenter channel_based_ground_segmenter_;
     LineFitRANSACGroundSegmenter line_fit_ransac_ground_segmenter_;
+
+    // Clusterer
+    static constexpr float NEIGHBOUR_RADIUS_THRESHOLD = 0.3;
+    static constexpr float CLUSTER_QUALITY = 0.5;
+    static constexpr std::uint32_t MIN_CLUSTER_SIZE = 4;
+    static constexpr std::uint32_t MAX_CLUSTER_SIZE = std::numeric_limits<std::uint32_t>::max();
+
+    ObstacleClusterer obstacle_clusterer_{NEIGHBOUR_RADIUS_THRESHOLD, CLUSTER_QUALITY, MIN_CLUSTER_SIZE,
+                                          MAX_CLUSTER_SIZE};
 };
 
 void ProcessingNode::process(const PointCloud2 &input_message)
@@ -121,8 +130,9 @@ void ProcessingNode::process(const PointCloud2 &input_message)
 
     // Instantiate processing objects
     auto ground_segmenter = std::make_unique<GroundSegmenter>();
-    auto obstacle_clusterer = std::make_unique<ObstacleClusterer>(
-        neighbour_radius_threshold, cluster_quality, min_cluster_size, max_cluster_size, clustering_algorithm);
+
+    // auto obstacle_clusterer = std::make_unique<ObstacleClusterer>(
+    //     neighbour_radius_threshold, cluster_quality, min_cluster_size, max_cluster_size, clustering_algorithm);
 
     // Convert PointCloud2 to pcl::PointCloud<pcl::PointXYZI>
     auto point_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
@@ -179,7 +189,8 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     const auto &obstacle_clustering_start_time = std::chrono::high_resolution_clock::now();
 
     std::vector<pcl::PointCloud<pcl::PointXYZ>> clustered_obstacle_cloud;
-    obstacle_clusterer->clusterObstacles(*obstacle_cloud, clustered_obstacle_cloud);
+    // obstacle_clusterer->clusterObstacles(*obstacle_cloud, clustered_obstacle_cloud);
+    obstacle_clusterer_.clusterObstacles(*obstacle_cloud, clustered_obstacle_cloud);
 
     const auto &obstacle_clustering_end_time = std::chrono::high_resolution_clock::now();
     std::cout << "Obstacle clustering time: "
