@@ -2,6 +2,7 @@
 #define LIDAR_PROCESSING__CLUSTERING_HPP
 
 // Containers
+#include "kdtree.hpp"
 #include "queue.hpp"
 #include "vector.hpp"
 
@@ -14,16 +15,22 @@
 
 namespace lidar_processing
 {
-using ClusteringLabel = std::uint32_t;
+using ClusteringLabel = std::int32_t;
 
 struct ClusteringConfiguration final
 {
+    float dist_sqr{0.16F};
+    std::uint32_t min_cluster_size{3U};
+    std::uint32_t max_cluster_size{std::numeric_limits<std::uint32_t>::max()};
 };
 
 class Clusterer final
 {
   public:
-    Clusterer() = default;
+    static constexpr ClusteringLabel UNDEFINED{std::numeric_limits<std::int32_t>::lowest()};
+    static constexpr ClusteringLabel INVALID{-1};
+
+    Clusterer();
     ~Clusterer() = default;
 
     void update_configuration(const ClusteringConfiguration &configuration);
@@ -34,7 +41,30 @@ class Clusterer final
     void cluster(const pcl::PointCloud<PointT> &cloud_in, std::vector<ClusteringLabel> &labels);
 
   private:
+    ClusteringConfiguration configuration_;
+
+    KDTree<float, 3> kdtree_;
+    containers::Vector<Point<float, 3>> points_;
+    containers::Vector<decltype(kdtree_)::RetT> neigh_;
+    containers::Vector<std::uint32_t> indices_;
+    std::vector<bool> is_seed_set_;
+    containers::Queue<std::uint32_t> queue_;
 };
+
+extern template void Clusterer::cluster(const pcl::PointCloud<pcl::PointXYZ> &cloud_in,
+                                        std::vector<ClusteringLabel> &labels);
+
+extern template void Clusterer::cluster(const pcl::PointCloud<pcl::PointXYZI> &cloud_in,
+                                        std::vector<ClusteringLabel> &labels);
+
+extern template void Clusterer::cluster(const pcl::PointCloud<pcl::PointXYZL> &cloud_in,
+                                        std::vector<ClusteringLabel> &labels);
+
+extern template void Clusterer::cluster(const pcl::PointCloud<pcl::PointXYZRGB> &cloud_in,
+                                        std::vector<ClusteringLabel> &labels);
+
+extern template void Clusterer::cluster(const pcl::PointCloud<pcl::PointXYZRGBL> &cloud_in,
+                                        std::vector<ClusteringLabel> &labels);
 } // namespace lidar_processing
 
 #endif // LIDAR_PROCESSING__CLUSTERING_HPP

@@ -34,6 +34,32 @@ template <typename T, std::uint8_t Dim> class KDTree final
         }
     };
 
+  public:
+    using RetT = std::pair<std::uint32_t, T>;
+
+    struct RetTCompare final
+    {
+        bool operator()(const RetT &a, const RetT &b) const noexcept
+        {
+            return a.second < b.second;
+        }
+    };
+
+    KDTree &operator=(const KDTreeT &other) = delete;
+    KDTree(const KDTreeT &other) = delete;
+    KDTree &operator=(KDTreeT &&other) noexcept = default;
+    KDTree(KDTreeT &&other) noexcept = default;
+
+    KDTree(bool sort = false, std::uint8_t num_threads = 1);
+
+    void reserve(std::uint32_t num_pts = 200'000U);
+    void rebuild(const containers::Vector<PointT> &points);
+    void k_nearest(const PointT &target, std::uint32_t num_neigh, containers::Vector<RetT> &neigh);
+    void radius_search(const PointT &target, T proximity_sqr, containers::Vector<RetT> &neigh);
+
+    inline static constexpr T dist_sqr(const PointT &a, const PointT &b) noexcept;
+
+  private:
     struct RebuildStack final
     {
         typename containers::Vector<Node>::iterator begin{nullptr};
@@ -73,30 +99,6 @@ template <typename T, std::uint8_t Dim> class KDTree final
         }
     };
 
-  public:
-    using RetT = std::pair<std::uint32_t, T>;
-
-    struct RetTCompare final
-    {
-        bool operator()(const RetT &a, const RetT &b) const noexcept
-        {
-            return a.second < b.second;
-        }
-    };
-
-    KDTree &operator=(const KDTreeT &other) = delete;
-    KDTree(const KDTreeT &other) = delete;
-    KDTree &operator=(KDTreeT &&other) noexcept = default;
-    KDTree(KDTreeT &&other) noexcept = default;
-
-    KDTree(bool sort = false, std::uint8_t num_threads = 1);
-
-    void reserve(std::uint32_t num_pts = 200'000U);
-    void rebuild(const containers::Vector<PointT> &points);
-    void k_nearest(const PointT &target, std::uint32_t num_neigh, containers::Vector<RetT> &neigh);
-    void radius_search(const PointT &target, T proximity_sqr, containers::Vector<RetT> &neigh);
-
-  private:
     bool sort_;
     bool threaded_;
     std::uint8_t num_threads_;
@@ -109,7 +111,6 @@ template <typename T, std::uint8_t Dim> class KDTree final
     containers::PriorityQueue<RetT, RetTCompare> min_heap_;
 
     template <std::uint8_t N = 0> inline static constexpr T dist_sqr_impl(const PointT &a, const PointT &b) noexcept;
-    inline static constexpr T dist_sqr(const PointT &a, const PointT &b) noexcept;
 };
 
 template <typename T, std::uint8_t Dim>
@@ -298,13 +299,11 @@ void KDTree<T, Dim>::radius_search(const PointT &target, T proximity_sqr, contai
         const auto delta = node->point[index] - target[index];
         const auto abs_delta_sqr = delta * delta;
 
-        // Check both children if within reach
         if (abs_delta_sqr <= proximity_sqr)
         {
             radius_search_stack_.emplace(node->right, next_index);
             radius_search_stack_.emplace(node->left, next_index);
         }
-        // Otherwise, only check the closer child
         else
         {
             const auto next_branch = (delta > 0) ? node->left : node->right;

@@ -8,6 +8,11 @@
 
 namespace lidar_processing
 {
+Segmenter::Segmenter() : configuration_{}
+{
+    reserve_memory();
+}
+
 void Segmenter::update_configuration(const SegmentationConfiguration &configuration)
 {
     configuration_ = configuration;

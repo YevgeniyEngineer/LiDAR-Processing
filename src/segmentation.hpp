@@ -36,7 +36,7 @@ struct SegmentationConfiguration final
 class Segmenter final
 {
   public:
-    Segmenter() = default;
+    Segmenter();
     ~Segmenter() = default;
 
     void update_configuration(const SegmentationConfiguration &configuration);

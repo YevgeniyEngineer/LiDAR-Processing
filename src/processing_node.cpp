@@ -3,6 +3,7 @@
 
 // Processing
 // #include "channel_based_ground_segmenter.hpp"
+#include "clustering.hpp"
 #include "conversions.hpp"
 #include "ground_segmentation.hpp"
 #include "internal_types.hpp"
@@ -110,6 +111,9 @@ class ProcessingNode : public rclcpp::Node
     Segmenter segmenter_;
 
     // Clusterer
+    Clusterer clusterer_;
+
+    // Clusterer
     static constexpr float NEIGHBOUR_RADIUS_THRESHOLD = 0.3;
     static constexpr float CLUSTER_QUALITY = 0.5;
     static constexpr std::uint32_t MIN_CLUSTER_SIZE = 4;
@@ -142,13 +146,13 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     auto point_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZI>>();
     convertPointCloud2ToPCL(input_message, *point_cloud);
 
-    auto downsampled_point_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZI>>();
-    downsampled_point_cloud->points.reserve(point_cloud->points.size());
+    // auto downsampled_point_cloud = std::make_unique<pcl::PointCloud<pcl::PointXYZI>>();
+    // downsampled_point_cloud->points.reserve(point_cloud->points.size());
 
-    pcl::VoxelGrid<pcl::PointXYZI> voxel_grid_downsampler;
-    voxel_grid_downsampler.setInputCloud(point_cloud);
-    voxel_grid_downsampler.setLeafSize(0.06f, 0.06f, 0.06f);
-    voxel_grid_downsampler.filter(*downsampled_point_cloud);
+    // pcl::VoxelGrid<pcl::PointXYZI> voxel_grid_downsampler;
+    // voxel_grid_downsampler.setInputCloud(point_cloud);
+    // voxel_grid_downsampler.setLeafSize(0.06f, 0.06f, 0.06f);
+    // voxel_grid_downsampler.filter(*downsampled_point_cloud);
 
     // Ground segmentation
     const auto ground_segmentation_start_time = std::chrono::high_resolution_clock::now();
@@ -165,7 +169,7 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     pcl::PointCloud<pcl::PointXYZI> ground_points;
     pcl::PointCloud<pcl::PointXYZI> obstacle_points;
 
-    segmenter_.segment(*downsampled_point_cloud, labels, ground_points, obstacle_points);
+    segmenter_.segment(*point_cloud, labels, ground_points, obstacle_points);
 
     ground_cloud->clear();
     obstacle_cloud->clear();
@@ -213,8 +217,41 @@ void ProcessingNode::process(const PointCloud2 &input_message)
     const auto &obstacle_clustering_start_time = std::chrono::high_resolution_clock::now();
 
     std::vector<pcl::PointCloud<pcl::PointXYZ>> clustered_obstacle_cloud;
-    // obstacle_clusterer->clusterObstacles(*obstacle_cloud, clustered_obstacle_cloud);
-    obstacle_clusterer_.clusterObstacles(*obstacle_cloud, clustered_obstacle_cloud);
+    // // obstacle_clusterer->clusterObstacles(*obstacle_cloud, clustered_obstacle_cloud);
+    // obstacle_clusterer_.clusterObstacles(*obstacle_cloud, clustered_obstacle_cloud);
+
+    std::vector<ClusteringLabel> cluster_labels;
+    clusterer_.cluster(*obstacle_cloud, cluster_labels);
+
+    // for (const auto &label : cluster_labels)
+    // {
+    //     if (label != Clusterer::INVALID && label != Clusterer::UNDEFINED)
+    //     {
+    //         std::cerr << label << " ";
+    //     }
+    // }
+    // std::cerr << std::endl;
+
+    // Get the highest label to know how many clusters there are
+    const auto max_label = *std::max_element(cluster_labels.cbegin(), cluster_labels.cend());
+    clustered_obstacle_cloud.resize(max_label + 1);
+
+    // Assign points to the appropriate cluster cloud
+    for (std::size_t i = 0; i < obstacle_cloud->size(); ++i)
+    {
+        auto label = cluster_labels[i];
+        if (label != Clusterer::INVALID)
+        {
+            const auto &point = obstacle_cloud->points[i];
+            clustered_obstacle_cloud[label].emplace_back(point.x, point.y, point.z);
+        }
+    }
+
+    // Optionally, remove any empty clouds if some labels were not used
+    clustered_obstacle_cloud.erase(
+        std::remove_if(clustered_obstacle_cloud.begin(), clustered_obstacle_cloud.end(),
+                       [](const pcl::PointCloud<pcl::PointXYZ> &cloud) -> bool { return cloud.empty(); }),
+        clustered_obstacle_cloud.end());
 
     const auto &obstacle_clustering_end_time = std::chrono::high_resolution_clock::now();
     std::cout << "Obstacle clustering time: "
