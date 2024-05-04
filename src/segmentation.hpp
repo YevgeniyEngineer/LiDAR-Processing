@@ -8,6 +8,9 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+// Eigen
+#include <Eigen/Dense>
+
 // STL
 #include <cstdint>
 
@@ -54,8 +57,24 @@ class Segmenter final
         std::uint32_t index{0U};
 
         Point() = default;
-        Point(float x, float y, float z, SegmentationLabel label, std::uint32_t index)
+
+        explicit Point(float x, float y, float z, SegmentationLabel label, std::uint32_t index)
             : x(x), y(y), z(z), label(label), index(index)
+        {
+        }
+    };
+
+    // ax + by + cz = d
+    struct Plane final
+    {
+        float a{0.0F};
+        float b{0.0F};
+        float c{0.0F};
+        float d{0.0F};
+
+        Plane() = default;
+
+        explicit Plane(float a, float b, float c, float d) : a(a), b(b), c(c), d(d)
         {
         }
     };
@@ -66,12 +85,30 @@ class Segmenter final
     containers::Vector<std::uint32_t> ground_indices_;
     containers::Vector<std::uint32_t> obstacle_indices_;
 
+    Eigen::JacobiSVD<Eigen::Matrix3f> svd_solver_{Eigen::Matrix3f{}, Eigen::ComputeThinV};
+
+    containers::Vector<float> cloud_buffer_;
+    Eigen::Map<Eigen::MatrixXf> cloud_points_xyz_;
+
+    containers::Vector<float> ground_buffer_;
+    Eigen::Map<Eigen::MatrixXf> ground_points_xyz_;
+
+    containers::Vector<float> centered_points_buffer_;
+    Eigen::Map<Eigen::MatrixXf> centered_points_xyz_;
+
+    bool estimate_plane_coefficients(const Eigen::Map<Eigen::MatrixXf> &ground_points_xyz, Plane &plane_coefficients);
+
     template <typename PointT>
     void form_planar_partitions(const pcl::PointCloud<PointT> &cloud_in,
                                 containers::Vector<containers::Vector<Point>> &cloud_segments);
+
     void extract_initial_seeds(const containers::Vector<Point> &cloud_segment,
                                containers::Vector<std::uint32_t> &ground_indices);
-    void fit_ground_plane();
+
+    void fit_ground_plane(const containers::Vector<Point> &cloud_segment,
+                          containers::Vector<std::uint32_t> &ground_indices,
+                          containers::Vector<std::uint32_t> &obstacle_indices);
+
     void combine_segmented_points();
 };
 

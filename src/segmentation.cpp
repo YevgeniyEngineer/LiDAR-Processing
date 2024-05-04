@@ -1,6 +1,7 @@
 #include "segmentation.hpp"
 
 // STL
+#include <algorithm>
 #include <numeric>
 
 namespace lidar_processing
@@ -14,6 +15,42 @@ template <typename PointT>
 void Segmenter::segment(const pcl::PointCloud<PointT> &cloud_in, std::vector<SegmentationLabel> &labels,
                         pcl::PointCloud<PointT> &ground_cloud, pcl::PointCloud<PointT> &obstacle_cloud)
 {
+}
+
+bool Segmenter::estimate_plane_coefficients(const Eigen::Map<Eigen::MatrixXf> &ground_points_xyz,
+                                            Plane &plane_coefficients)
+{
+    // https://eigen.tuxfamily.org/dox/group__DenseDecompositionBenchmark.html
+    // https://eigen.tuxfamily.org/dox-devel/group__TopicLinearAlgebraDecompositions.html#note3
+    // https://math.stackexchange.com/questions/99299/best-fitting-plane-given-a-set-of-points
+
+    const auto number_of_points = ground_points_xyz.rows();
+
+    if (number_of_points < 3)
+    {
+        return false;
+    }
+
+    const Eigen::RowVector3f centroid = ground_points_xyz.colwise().mean();
+
+    centered_points_buffer_.resize(static_cast<std::size_t>(number_of_points) * 3UL);
+    Eigen::Map<Eigen::MatrixXf> centered_points(centered_points_buffer_.data(), number_of_points, 3);
+
+    centered_points.noalias() = ground_points_xyz.rowwise() - centroid;
+
+    Eigen::Matrix3f covariance = centered_points.transpose() * centered_points;
+    covariance /= static_cast<float>(number_of_points - 1);
+
+    svd_solver_.compute(covariance);
+
+    const Eigen::Vector3f normal = svd_solver_.matrixV().col(2);
+
+    plane_coefficients.a = normal(0);
+    plane_coefficients.b = normal(1);
+    plane_coefficients.c = normal(2);
+    plane_coefficients.d = normal.dot(centroid);
+
+    return true;
 }
 
 template <typename PointT>
@@ -132,6 +169,19 @@ void Segmenter::extract_initial_seeds(const containers::Vector<Point> &cloud_seg
     for (std::size_t i = 0UL; i < z_max_cutoff_index; ++i)
     {
         ground_indices[i] = sorted_indices_[i];
+    }
+}
+
+void Segmenter::fit_ground_plane(const containers::Vector<Point> &cloud_segment,
+                                 containers::Vector<std::uint32_t> &ground_indices,
+                                 containers::Vector<std::uint32_t> &obstacle_indices)
+{
+    ground_indices.clear();
+    obstacle_indices.clear();
+
+    if (cloud_segment.empty())
+    {
+        return;
     }
 }
 
