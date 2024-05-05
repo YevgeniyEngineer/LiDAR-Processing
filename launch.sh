@@ -9,7 +9,7 @@ LAUCH_DIR="${BUILD_DIR}"
 unset GTK_PATH
 
 cd "${LAUCH_DIR}"
-./point_cloud_publisher_node &
+./dataloader &
 ./processing_node &
 
 cd "${SCRIPT_DIR}"

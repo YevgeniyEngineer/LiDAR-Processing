@@ -28,18 +28,10 @@ include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-# build rules for executable "data_reader_node"
-add_executable(point_cloud_publisher_node
-    src/point_cloud_publisher_node.cpp
-)
-ament_target_dependencies(point_cloud_publisher_node
-    rclcpp
-    sensor_msgs
-)
-target_link_libraries(point_cloud_publisher_node
-    ${PCL_LIBRARIES}
-    ${rclcpp_LIBRARIES}
-)
+# build rules for executable dataloader
+add_executable(dataloader src/dataloader.cpp)
+ament_target_dependencies(dataloader rclcpp sensor_msgs)
+target_link_libraries(dataloader ${PCL_LIBRARIES} ${rclcpp_LIBRARIES})
 
 # build rules for executable "processing_node"
 add_executable(processing_node
@@ -51,12 +43,12 @@ add_executable(processing_node
 )
 target_include_directories(processing_node
     PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
     PRIVATE
-    ${rclcpp_INCLUDE_DIRS}
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${rclcpp_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 ament_target_dependencies(processing_node
     rclcpp
