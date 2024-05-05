@@ -9,8 +9,8 @@ LAUCH_DIR="${BUILD_DIR}"
 unset GTK_PATH
 
 cd "${LAUCH_DIR}"
-./point_cloud_publisher_node &
-./processing_node &
+./dataloader &
+./processor &
 
 cd "${SCRIPT_DIR}"
 rviz2 -d "visualisation/rviz2_config.rviz" &

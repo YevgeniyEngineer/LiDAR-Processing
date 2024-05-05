@@ -5,8 +5,11 @@ cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 
 project(lidar_processing)
 
+set(BUILD_TESTS True)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(TBB REQUIRED)
 find_package(PCL 1.7.2 REQUIRED)
@@ -18,61 +21,75 @@ find_package(geometry_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 
-add_subdirectory(./DBSCAN)
-add_subdirectory(./Fast-Euclidean-Clustering)
 add_subdirectory(./Convex-Hull)
 add_subdirectory(./Concave-Hull)
-add_subdirectory(./Adaptive-DBSCAN)
 
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
-# build rules for executable "data_reader_node"
-add_executable(point_cloud_publisher_node
-    src/point_cloud_publisher_node.cpp
-)
-ament_target_dependencies(point_cloud_publisher_node
-    rclcpp
-    sensor_msgs
-)
-target_link_libraries(point_cloud_publisher_node
-    ${PCL_LIBRARIES}
-    ${rclcpp_LIBRARIES}
-)
+# build rules for executable dataloader
+add_executable(dataloader src/dataloader.cpp)
+ament_target_dependencies(dataloader rclcpp sensor_msgs)
+target_link_libraries(dataloader ${PCL_LIBRARIES} ${rclcpp_LIBRARIES})
 
-# build rules for executable "processing_node"
-add_executable(processing_node
-    src/processing_node.cpp
-    src/ground_segmentation.cpp
-    src/obstacle_clustering.cpp
+# build rules for executable processor
+add_executable(processor
+    src/segmentation.cpp
+    src/clustering.cpp
+    src/polygonization.cpp
+    src/processor.cpp
     src/conversions.cpp
     src/polygon_simplification.cpp
-    src/adaptive_euclidean_clustering.cpp
 )
-target_include_directories(processing_node
+target_include_directories(processor
     PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
     PRIVATE
-    ${rclcpp_INCLUDE_DIRS}
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${rclcpp_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
-ament_target_dependencies(processing_node
+ament_target_dependencies(processor
     rclcpp
     sensor_msgs
     geometry_msgs
     visualization_msgs
     builtin_interfaces
 )
-target_link_libraries(processing_node
+target_link_libraries(processor
     TBB::tbb
     Eigen3::Eigen
     ${PCL_LIBRARIES}
     ${rclcpp_LIBRARIES}
-    dbscan::dbscan
-    fast_euclidean_clustering::fast_euclidean_clustering
     convex_hull::convex_hull
     concave_hull::concave_hull
-    clustering::adaptive_dbscan
 )
+
+if(BUILD_TESTS)
+    find_package(GTest REQUIRED)
+
+    enable_testing()
+
+    set(TEST_NAME test_kdtree)
+
+    include(GoogleTest)
+
+    add_executable(${TEST_NAME}
+        test/test_kdtree.cpp
+    )
+
+    target_include_directories(${TEST_NAME}
+        PRIVATE
+            include
+            src
+    )
+
+    target_link_libraries(${TEST_NAME}
+        PRIVATE
+            GTest::gtest_main
+    )
+
+    gtest_discover_tests(${TEST_NAME})
+endif()
