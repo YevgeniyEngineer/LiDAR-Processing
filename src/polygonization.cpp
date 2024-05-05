@@ -19,3 +19,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
+#include "polygonization.hpp"
+
+namespace lidar_processing
+{
+void Polygonizer::update_configuration(const PolygonizationConfiguration &configuration)
+{
+    configuration_ = configuration;
+}
+
+void Polygonizer::reserve_memory(std::uint32_t max_points_per_cluster)
+{
+    polygon_.reserve(max_points_per_cluster);
+    coordinates_xy_.reserve(max_points_per_cluster * 2U);
+}
+
+template <typename PointT>
+void Polygonizer::polygonize(const pcl::PointCloud<PointT> &cloud, const std::vector<ClusteringLabel> &cluster_labels,
+                             containers::Vector<containers::Vector<PointXYdZ>> &polygons)
+{
+}
+
+template void Polygonizer::polygonize(const pcl::PointCloud<pcl::PointXYZ> &cloud,
+                                      const std::vector<ClusteringLabel> &cluster_labels,
+                                      containers::Vector<containers::Vector<PointXYdZ>> &polygons);
+
+template void Polygonizer::polygonize(const pcl::PointCloud<pcl::PointXYZI> &cloud,
+                                      const std::vector<ClusteringLabel> &cluster_labels,
+                                      containers::Vector<containers::Vector<PointXYdZ>> &polygons);
+
+template void Polygonizer::polygonize(const pcl::PointCloud<pcl::PointXYZL> &cloud,
+                                      const std::vector<ClusteringLabel> &cluster_labels,
+                                      containers::Vector<containers::Vector<PointXYdZ>> &polygons);
+
+template void Polygonizer::polygonize(const pcl::PointCloud<pcl::PointXYZRGB> &cloud,
+                                      const std::vector<ClusteringLabel> &cluster_labels,
+                                      containers::Vector<containers::Vector<PointXYdZ>> &polygons);
+
+template void Polygonizer::polygonize(const pcl::PointCloud<pcl::PointXYZRGBA> &cloud,
+                                      const std::vector<ClusteringLabel> &cluster_labels,
+                                      containers::Vector<containers::Vector<PointXYdZ>> &polygons);
+} // namespace lidar_processing

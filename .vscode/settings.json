@@ -91,6 +91,8 @@
     "cmake.configureOnOpen": true,
     "cSpell.words": [
         "Clusterer",
-        "KDTREE"
+        "KDTREE",
+        "polygonize",
+        "Polygonizer"
     ]
 }

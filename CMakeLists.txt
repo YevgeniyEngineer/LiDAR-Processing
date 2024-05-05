@@ -37,6 +37,7 @@ target_link_libraries(dataloader ${PCL_LIBRARIES} ${rclcpp_LIBRARIES})
 add_executable(processing_node
     src/segmentation.cpp
     src/clustering.cpp
+    src/polygonization.cpp
     src/processing_node.cpp
     src/conversions.cpp
     src/polygon_simplification.cpp
