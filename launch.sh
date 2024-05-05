@@ -10,7 +10,7 @@ unset GTK_PATH
 
 cd "${LAUCH_DIR}"
 ./dataloader &
-./processing_node &
+./processor &
 
 cd "${SCRIPT_DIR}"
 rviz2 -d "visualisation/rviz2_config.rviz" &

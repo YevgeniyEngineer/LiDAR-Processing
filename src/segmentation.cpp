@@ -296,7 +296,7 @@ void Segmenter::fit_ground_plane(const containers::Vector<Point> &cloud_segment)
 
         for (std::uint32_t point_index = 0U; point_index < number_of_points; ++point_index)
         {
-            if (std::fabs(distances(point_index)) < scaled_orthogonal_distance_threshold)
+            if (distances(point_index) < scaled_orthogonal_distance_threshold)
             {
                 ground_indices_.push_back(point_index);
             }

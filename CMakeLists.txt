@@ -33,16 +33,16 @@ add_executable(dataloader src/dataloader.cpp)
 ament_target_dependencies(dataloader rclcpp sensor_msgs)
 target_link_libraries(dataloader ${PCL_LIBRARIES} ${rclcpp_LIBRARIES})
 
-# build rules for executable "processing_node"
-add_executable(processing_node
+# build rules for executable processor
+add_executable(processor
     src/segmentation.cpp
     src/clustering.cpp
     src/polygonization.cpp
-    src/processing_node.cpp
+    src/processor.cpp
     src/conversions.cpp
     src/polygon_simplification.cpp
 )
-target_include_directories(processing_node
+target_include_directories(processor
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
@@ -51,14 +51,14 @@ target_include_directories(processing_node
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
-ament_target_dependencies(processing_node
+ament_target_dependencies(processor
     rclcpp
     sensor_msgs
     geometry_msgs
     visualization_msgs
     builtin_interfaces
 )
-target_link_libraries(processing_node
+target_link_libraries(processor
     TBB::tbb
     Eigen3::Eigen
     ${PCL_LIBRARIES}

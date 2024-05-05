@@ -55,14 +55,14 @@
 
 namespace lidar_processing
 {
-class ProcessingNode : public rclcpp::Node
+class Processor : public rclcpp::Node
 {
     using PointCloud2 = sensor_msgs::msg::PointCloud2;
     using MarkerArray = visualization_msgs::msg::MarkerArray;
     using PointFieldTypes = pcl::PCLPointField::PointFieldTypes;
 
   public:
-    ProcessingNode() : rclcpp::Node::Node("processing_node")
+    Processor() : rclcpp::Node::Node("processor")
     {
         std::cout << "processing_node started" << std::endl;
 
@@ -92,7 +92,7 @@ class ProcessingNode : public rclcpp::Node
 
         // Create publishers and subscribers
         subscriber_ = this->create_subscription<PointCloud2>(
-            "pointcloud", qos, std::bind(&ProcessingNode::process, this, std::placeholders::_1));
+            "pointcloud", qos, std::bind(&Processor::process, this, std::placeholders::_1));
 
         // Publisher nodes
         publisher_ground_cloud_ = this->create_publisher<PointCloud2>("ground_pointcloud", qos);
@@ -103,7 +103,7 @@ class ProcessingNode : public rclcpp::Node
         publisher_obstacle_convex_hulls_ = this->create_publisher<MarkerArray>("convex_polygonization", qos);
     }
 
-    ~ProcessingNode() = default;
+    ~Processor() = default;
 
     void process(const PointCloud2 &input_message);
 
@@ -135,7 +135,7 @@ class ProcessingNode : public rclcpp::Node
     Clusterer clusterer_;
 };
 
-void ProcessingNode::process(const PointCloud2 &input_message)
+void Processor::process(const PointCloud2 &input_message)
 {
     convertPointCloud2ToPCL(input_message, cloud_in_);
 
@@ -279,7 +279,7 @@ int main(int argc, const char **const argv)
     bool success = true;
     try
     {
-        rclcpp::spin(std::make_shared<lidar_processing::ProcessingNode>());
+        rclcpp::spin(std::make_shared<lidar_processing::Processor>());
     }
     catch (const std::exception &ex)
     {
