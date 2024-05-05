@@ -24,7 +24,6 @@
 #include "convex_hull.hpp"
 
 // Processing
-// #include "channel_based_ground_segmenter.hpp"
 #include "clustering.hpp"
 #include "conversions.hpp"
 #include "polygon_simplification.hpp"
