@@ -25,7 +25,7 @@ To perform clustering on segmented LiDAR points I used the adaptation of [Fast E
 
 The obstacle cloud clusters are post-processed further, finding a simplified polygon shapes around 3D point clusters. Polygonization is based on finding the concave hull simplification. The method relies on the efficient construction of concave polygons outlined in [Duckham et.al "Efficient generation of simple polygons for characterizing the shape of a set of points in the plane"](https://www.sciencedirect.com/science/article/abs/pii/S0031320308001180). The concave algorithm begins with Delaunay triangulation, using it as a foundational step for refining the perimeter of the convex outline to better conform to the actual spread of points, preserving the 2.5D flattened cluster shape.
 
-![polygonization](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/polygonization.png)
+![polygonization](https://github.com/YevgeniyEngineer/LiDAR-Processing/blob/main/images/concave_polygonization.png)
 
 ## Setup
 
