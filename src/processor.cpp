@@ -97,10 +97,8 @@ class Processor : public rclcpp::Node
         // Publisher nodes
         publisher_ground_cloud_ = this->create_publisher<PointCloud2>("ground_pointcloud", qos);
         publisher_obstacle_cloud_ = this->create_publisher<PointCloud2>("obstacle_pointcloud", qos);
-
-        publisher_obstacle_clustering_cloud_ = this->create_publisher<PointCloud2>("clustered_pointcloud", qos);
-
-        publisher_obstacle_convex_hulls_ = this->create_publisher<MarkerArray>("convex_polygonization", qos);
+        publisher_clustered_cloud_ = this->create_publisher<PointCloud2>("clustered_pointcloud", qos);
+        publisher_polygonization_ = this->create_publisher<MarkerArray>("polygonization", qos);
     }
 
     ~Processor() = default;
@@ -116,10 +114,10 @@ class Processor : public rclcpp::Node
     rclcpp::Publisher<PointCloud2>::SharedPtr publisher_obstacle_cloud_;
 
     // Obstacle clustering
-    rclcpp::Publisher<PointCloud2>::SharedPtr publisher_obstacle_clustering_cloud_;
+    rclcpp::Publisher<PointCloud2>::SharedPtr publisher_clustered_cloud_;
 
     // Obstacle cluster polygonization
-    rclcpp::Publisher<MarkerArray>::SharedPtr publisher_obstacle_convex_hulls_;
+    rclcpp::Publisher<MarkerArray>::SharedPtr publisher_polygonization_;
     rclcpp::Publisher<MarkerArray>::SharedPtr publisher_obstacle_concave_hulls_;
 
     // Cache
@@ -257,7 +255,7 @@ void Processor::process(const PointCloud2 &input_message)
         output_clustered_obstacle_message->is_bigendian = input_message.is_bigendian;
         auto colorized_cloud = convertClusteredCloudToColorizedCloud(clustered_obstacle_cloud);
         convertPCLToPointCloud2(colorized_cloud, *output_clustered_obstacle_message);
-        publisher_obstacle_clustering_cloud_->publish(*output_clustered_obstacle_message);
+        publisher_clustered_cloud_->publish(*output_clustered_obstacle_message);
     }
 
     // Convert to ROS2 format and publish (polygonization)
@@ -266,7 +264,7 @@ void Processor::process(const PointCloud2 &input_message)
         auto output_convex_polygonization_message = std::make_unique<MarkerArray>();
         convertPointXYZTypeToMarkerArray(cluster_outlines, input_message.header.frame_id, input_message.header.stamp,
                                          *output_convex_polygonization_message);
-        publisher_obstacle_convex_hulls_->publish(*output_convex_polygonization_message);
+        publisher_polygonization_->publish(*output_convex_polygonization_message);
     }
 }
 } // namespace lidar_processing
