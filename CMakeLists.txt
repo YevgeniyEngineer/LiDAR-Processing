@@ -69,27 +69,21 @@ target_link_libraries(processor
 
 if(BUILD_TESTS)
     find_package(GTest REQUIRED)
-
     enable_testing()
-
-    set(TEST_NAME test_kdtree)
-
+    set(TEST_NAME test_all)
     include(GoogleTest)
-
     add_executable(${TEST_NAME}
         test/test_kdtree.cpp
+        test/test_pointcloud.cpp
     )
-
     target_include_directories(${TEST_NAME}
         PRIVATE
             include
             src
     )
-
     target_link_libraries(${TEST_NAME}
         PRIVATE
             GTest::gtest_main
     )
-
     gtest_discover_tests(${TEST_NAME})
 endif()
