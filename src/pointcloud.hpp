@@ -73,7 +73,6 @@ template <typename PointT> class PointCloud final
 
     void add_cluster(const std::vector<PointT> &new_cluster);
 
-    PointsView at_cluster(std::size_t cluster_index);
     const PointsView at_cluster(std::size_t cluster_index) const;
 
     PointsView last_cluster();
@@ -298,16 +297,6 @@ template <typename PointT> const typename PointCloud<PointT>::PointsView PointCl
         throw std::runtime_error("PointCloud::last_cluster(): No clusters");
     }
     return PointsView(const_cast<PointCloud<PointT> *>(this), clusters_.size() - 1);
-}
-
-template <typename PointT>
-typename PointCloud<PointT>::PointsView PointCloud<PointT>::at_cluster(std::size_t cluster_index)
-{
-    if (cluster_index >= clusters_.size())
-    {
-        throw std::runtime_error("PointCloud::at_cluster(): Index out of bounds");
-    }
-    return PointsView(this, cluster_index);
 }
 
 template <typename PointT>
