@@ -29,9 +29,9 @@ template <typename PointT> class PointCloud final
         ConstReverseIteratorT crbegin() const noexcept;
         ConstReverseIteratorT crend() const noexcept;
 
-        std::size_t size() const;
-        PointT &operator[](std::size_t index);
-        const PointT &operator[](std::size_t index) const;
+        std::size_t size() const noexcept;
+        PointT &operator[](std::size_t index) noexcept;
+        const PointT &operator[](std::size_t index) const noexcept;
         PointT &at(std::size_t index);
         const PointT &at(std::size_t index) const;
         PointT &at_point(std::size_t index);
@@ -42,8 +42,8 @@ template <typename PointT> class PointCloud final
         template <typename... Args> void emplace_back(Args &&...args);
 
       private:
-        PointCloud<PointT> *parent_;
-        std::size_t cluster_index_;
+        PointCloud<PointT> *parent_{nullptr};
+        std::size_t cluster_index_{std::size_t(-1)};
     };
 
     PointCloud() = default;
@@ -61,10 +61,10 @@ template <typename PointT> class PointCloud final
     void push_into_last_cluster(const PointT &point);
     void push_into_last_cluster(PointT &&point);
     void increment_cluster();
-    void clear();
+    void clear() noexcept;
 
-    std::size_t total_clusters() const;
-    std::size_t total_points() const;
+    std::size_t total_clusters() const noexcept;
+    std::size_t total_points() const noexcept;
 
     PointT &operator()(std::size_t cluster_index, std::size_t point_index);
     const PointT &operator()(std::size_t cluster_index, std::size_t point_index) const;
@@ -145,18 +145,18 @@ typename PointCloud<PointT>::PointsView::ConstReverseIteratorT PointCloud<PointT
     return ConstReverseIteratorT(cbegin());
 }
 
-template <typename PointT> std::size_t PointCloud<PointT>::PointsView::size() const
+template <typename PointT> std::size_t PointCloud<PointT>::PointsView::size() const noexcept
 {
     return parent_->clusters_[cluster_index_].second;
 }
 
-template <typename PointT> PointT &PointCloud<PointT>::PointsView::operator[](std::size_t index)
+template <typename PointT> PointT &PointCloud<PointT>::PointsView::operator[](std::size_t index) noexcept
 {
     assert(index < size());
     return parent_->points_[parent_->clusters_[cluster_index_].first + index];
 }
 
-template <typename PointT> const PointT &PointCloud<PointT>::PointsView::operator[](std::size_t index) const
+template <typename PointT> const PointT &PointCloud<PointT>::PointsView::operator[](std::size_t index) const noexcept
 {
     assert(index < size());
     return parent_->points_[parent_->clusters_[cluster_index_].first + index];
@@ -259,18 +259,18 @@ template <typename PointT> void PointCloud<PointT>::increment_cluster()
     clusters_.emplace_back(points_.size(), 0);
 }
 
-template <typename PointT> void PointCloud<PointT>::clear()
+template <typename PointT> void PointCloud<PointT>::clear() noexcept
 {
     points_.clear();
     clusters_.clear();
 }
 
-template <typename PointT> std::size_t PointCloud<PointT>::total_clusters() const
+template <typename PointT> std::size_t PointCloud<PointT>::total_clusters() const noexcept
 {
     return clusters_.size();
 }
 
-template <typename PointT> std::size_t PointCloud<PointT>::total_points() const
+template <typename PointT> std::size_t PointCloud<PointT>::total_points() const noexcept
 {
     return points_.size();
 }
@@ -278,7 +278,7 @@ template <typename PointT> std::size_t PointCloud<PointT>::total_points() const
 template <typename PointT> void PointCloud<PointT>::add_cluster(const std::vector<PointT> &new_cluster)
 {
     const std::size_t start_index = points_.size();
-    points_.insert(points_.end(), new_cluster.begin(), new_cluster.end());
+    points_.insert(points_.end(), new_cluster.cbegin(), new_cluster.cend());
     clusters_.emplace_back(start_index, new_cluster.size());
 }
 
