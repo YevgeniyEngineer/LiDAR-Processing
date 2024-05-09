@@ -27,6 +27,7 @@
 #include <cstdlib>
 #include <memory>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 namespace containers
@@ -50,6 +51,9 @@ class CartesianVector3DAdapter final
         float z() const noexcept;
 
         void set(float x, float y, float z) noexcept;
+
+        void swap(Point3D &other) noexcept;
+        void swap(Point3D &a, Point3D &b) noexcept;
 
       private:
         friend class CartesianVector3DAdapter;
@@ -140,6 +144,16 @@ inline void CartesianVector3DAdapter::Point3D::set(float x, float y, float z) no
     ptr_[0] = x;
     ptr_[1] = y;
     ptr_[2] = z;
+}
+
+inline void CartesianVector3DAdapter::Point3D::swap(Point3D &other) noexcept
+{
+    std::swap(this->ptr_, other.ptr_);
+}
+
+inline void swap(CartesianVector3DAdapter::Point3D &a, CartesianVector3DAdapter::Point3D &b) noexcept
+{
+    a.swap(b);
 }
 
 inline CartesianVector3DAdapter::Point3D::Point3D(float *ptr) noexcept : ptr_(ptr)
