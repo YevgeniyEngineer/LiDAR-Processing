@@ -90,7 +90,9 @@
     },
     "cmake.configureOnOpen": true,
     "cSpell.words": [
+        "circumradius",
         "Clusterer",
+        "DELAUNATOR",
         "KDTREE",
         "pointcloud",
         "polygonize",

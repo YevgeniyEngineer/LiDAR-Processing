@@ -75,6 +75,8 @@ if(BUILD_TESTS)
     add_executable(${TEST_NAME}
         test/test_kdtree.cpp
         test/test_pointcloud.cpp
+        test/test_cartesian_vector_2d_adapter.cpp
+        test/test_cartesian_vector_3d_adapter.cpp
     )
     target_include_directories(${TEST_NAME}
         PRIVATE

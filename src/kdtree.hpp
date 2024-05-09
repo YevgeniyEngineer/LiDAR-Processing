@@ -31,7 +31,6 @@
 #include <algorithm> // std::sort, std::nth_element
 #include <array>     // std::array
 #include <cstdint>   // std::size_t
-#include <stdexcept> // std::runtime_error
 #include <utility>   // std::pair
 
 namespace lidar_processing
@@ -216,11 +215,6 @@ template <typename T, std::uint8_t Dim> void KDTree<T, Dim>::rebuild(const conta
         {
             rebuild_stack_.emplace(mid + 1, end, &((*node_ref)->right), depth + 1);
         }
-    }
-
-    if (root_ == nullptr)
-    {
-        throw std::runtime_error("KDTree is empty");
     }
 }
 
