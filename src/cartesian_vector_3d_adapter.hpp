@@ -171,14 +171,14 @@ inline float &CartesianVector3DAdapter::operator()(std::size_t index, std::size_
 {
     assert((dim < 3) && "Dimension out of bounds");
     assert((index * 3 + dim < data_->size()) && "Index out of bounds");
-    return data_->operator[](index * 3 + dim);
+    return (*data_)[index * 3 + dim];
 }
 
 inline float CartesianVector3DAdapter::operator()(std::size_t index, std::size_t dim) const noexcept
 {
     assert((dim < 3) && "Dimension out of bounds");
     assert((index * 3 + dim < data_->size()) && "Index out of bounds");
-    return data_->operator[](index * 3 + dim);
+    return (*data_)[index * 3 + dim];
 }
 
 inline float &CartesianVector3DAdapter::at(std::size_t index, std::size_t dim)
@@ -191,7 +191,7 @@ inline float &CartesianVector3DAdapter::at(std::size_t index, std::size_t dim)
     {
         throw std::out_of_range("Index out of bounds");
     }
-    return data_->operator[](index * 3 + dim);
+    return (*data_)[index * 3 + dim];
 }
 
 inline float CartesianVector3DAdapter::at(std::size_t index, std::size_t dim) const
@@ -204,7 +204,7 @@ inline float CartesianVector3DAdapter::at(std::size_t index, std::size_t dim) co
     {
         throw std::out_of_range("Index out of bounds");
     }
-    return data_->operator[](index * 3 + dim);
+    return (*data_)[index * 3 + dim];
 }
 
 inline void CartesianVector3DAdapter::clear() noexcept

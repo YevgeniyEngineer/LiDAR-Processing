@@ -172,7 +172,7 @@ inline float &CartesianVector2DAdapter::at(std::size_t index, std::size_t dim)
     {
         throw std::out_of_range("Index out of bounds");
     }
-    return data_->operator[](index * 3 + dim);
+    return (*data_)[index * 2 + dim];
 }
 
 inline float CartesianVector2DAdapter::at(std::size_t index, std::size_t dim) const
@@ -185,7 +185,7 @@ inline float CartesianVector2DAdapter::at(std::size_t index, std::size_t dim) co
     {
         throw std::out_of_range("Index out of bounds");
     }
-    return data_->operator[](index * 3 + dim);
+    return (*data_)[index * 2 + dim];
 }
 
 inline void CartesianVector2DAdapter::clear() noexcept
