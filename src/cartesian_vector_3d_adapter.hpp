@@ -53,7 +53,7 @@ class CartesianVector3DAdapter final
         void set(float x, float y, float z) noexcept;
 
         void swap(Point3D &other) noexcept;
-        void swap(Point3D &a, Point3D &b) noexcept;
+        friend void swap(Point3D &a, Point3D &b) noexcept;
 
       private:
         friend class CartesianVector3DAdapter;
