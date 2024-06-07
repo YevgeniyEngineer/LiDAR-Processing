@@ -98,6 +98,8 @@ class Processor : public rclcpp::Node
         publisher_obstacle_cloud_ = this->create_publisher<PointCloud2>("obstacle_pointcloud", qos);
         publisher_clustered_cloud_ = this->create_publisher<PointCloud2>("clustered_pointcloud", qos);
         publisher_polygonization_ = this->create_publisher<MarkerArray>("polygonization", qos);
+
+        RCLCPP_INFO(this->get_logger(), "Processor node constructed.");
     }
 
     ~Processor() = default;

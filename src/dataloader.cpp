@@ -170,7 +170,7 @@ void Dataloader::publish_next_sample()
     publisher_->publish(msg);
     last_timestamp_ += PUBLICATION_RATE;
 
-    RCLCPP_INFO(this->get_logger(), "Published at [%ds, %uns]", msg.header.stamp.sec, msg.header.stamp.nanosec);
+    // RCLCPP_INFO(this->get_logger(), "Published at [%ds, %uns]", msg.header.stamp.sec, msg.header.stamp.nanosec);
     ++current_cloud_;
 }
 
